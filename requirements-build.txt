@@ -1,0 +1,17 @@
+# Build time only — the data pipeline. Never installed on the deployed service.
+#
+#   python scripts/fetch_data.py       boundaries, population, poverty
+#   python scripts/fetch_giga.py       school locations
+#   python scripts/build_bundles.py    the district bundles the page ships with
+#   python scripts/probe_overture.py   school-coverage cross-check (duckdb)
+
+-r api/requirements.txt
+
+geopandas==1.1.4
+shapely==2.1.2
+pyproj==3.8.0
+pyogrio==0.13.0
+pandas==3.0.5
+numpy==2.5.3
+requests==2.34.2
+duckdb==1.5.6

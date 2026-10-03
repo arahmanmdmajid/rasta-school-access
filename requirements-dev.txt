@@ -1,3 +1,7 @@
+# Tests. The suite runs entirely offline against committed district bundles, so it needs
+# the runtime only — not the geospatial build stack.
+
 -r api/requirements.txt
+
 pytest==9.1.1
 httpx==0.28.1

@@ -1,10 +1,12 @@
+# Runtime only — what the deployed API actually imports.
+#
+# The geospatial stack is deliberately absent. All spatial work happens at build time in
+# scripts/build_bundles.py, and the deployed service reads precomputed JSON, so geopandas,
+# shapely, pyproj, pyogrio, pandas and numpy are not needed here. That keeps the free-tier
+# build near-instant and removes the most likely cause of a deploy failing at the worst
+# possible moment. See requirements-build.txt for the pipeline's own dependencies.
+
 fastapi==0.141.1
 uvicorn[standard]==0.52.4
-geopandas==1.1.4
-shapely==2.1.2
-pyproj==3.8.0
-pyogrio==0.13.0
-pandas==3.0.5
-numpy==2.5.3
-requests==2.34.2
+pydantic==2.13.5
 groq==1.7.0

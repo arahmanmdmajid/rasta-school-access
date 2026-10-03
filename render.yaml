@@ -1,5 +1,11 @@
-# Render blueprint for the GeoMind AI Python API (free web service).
-# In Render: New > Blueprint > pick this repo. Then set GROQ_API_KEY in the service's Environment.
+# Render blueprint for the Rasta API (free web service).
+# In Render: New > Blueprint > pick this repo. Then set GROQ_API_KEY in the service's
+# Environment tab. GIGA_SCHOOL_LOCATION_API_KEY is NOT needed here — Giga is used only
+# at build time, so that key never leaves the machine that builds the bundles.
+#
+# Note what this service is NOT responsible for. The map, the hover catchment, the
+# choropleth and the shortlist are static files on the Hugging Face Space, so a cold
+# start here degrades one feature rather than the demo.
 services:
   - type: web
     name: rasta-api
