@@ -51,9 +51,10 @@ DEDUPE_M = 75                # two points this close are the same school in both
 # denominator. Source: Pakistan Institute of Education, Pakistan Education Statistics.
 OFFICIAL_SCHOOLS: dict[str, int] = {}
 OFFICIAL_PROVINCE = {"Sindh": 48000}          # PIE, Pakistan Education Statistics
-# Measured 2026-10-03 against the same bbox for every source, so the comparison is
-# like for like: OpenStreetMap 1,571, UNICEF Giga 1,557. See docs/data-provenance.md.
-PROVINCE_MAPPED = {"Sindh": 1557}
+# What the merged Giga + Overture extract actually yields for the province, counted from
+# the built bundles. Measured 2026-10-03 on one bbox for every source so the comparison is
+# like for like: OpenStreetMap 1,571, UNICEF Giga 1,557 (OSM-derived), Overture 6,042.
+PROVINCE_MAPPED = {"Sindh": 6390}
 
 
 # ----------------------------------------------------------------------------- load
@@ -325,12 +326,13 @@ def build(code: str, facility_type: str) -> Path:
             "verdict": "low",
             "note": (
                 "Distances are to the nearest MAPPED school, and open school data for "
-                "Pakistan is radically incomplete. Three independent sources were tested "
-                "for Sindh: OpenStreetMap 1,571, UNICEF Giga 1,557 (OSM-derived), against "
-                "roughly 48,000 government schools on the official count - about 3%. "
-                "Everything here is therefore a list of places to FIELD-VERIFY, never a "
-                "confirmed gap, and a low figure for mapped schools says more about the "
-                "map than about the district."
+                "Pakistan is substantially incomplete. Three sources were tested for "
+                "Sindh: OpenStreetMap 1,571, UNICEF Giga 1,557 (OSM-derived and so adding "
+                "almost nothing), and Overture 6,042 - the last drawn mainly from Meta and "
+                "therefore genuinely independent. Giga and Overture are merged here, "
+                "de-duplicated at 75 m, giving 6,390 against roughly 48,000 government "
+                "schools on the official count: about 13%. Everything here is therefore a "
+                "list of places to FIELD-VERIFY, never a confirmed gap."
             ),
         },
         "totals": {

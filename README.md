@@ -38,6 +38,7 @@ how far the available data can carry the answer.
 | Get a ranked list of places to visit | Greedy, spatially de-duplicated shortlist per district |
 | Ask in plain English | A five-agent pipeline, with a verifier that can overrule the model |
 | Judge how much to trust it | Every district reports how many of its schools exist in open data at all |
+| See the urban/rural gradient | Central Karachi: 5% of children beyond a 15-minute walk. Tharparkar: 94% |
 
 ## The finding you should know before trusting any number
 
@@ -53,9 +54,10 @@ assuming it. For Sindh, against roughly **48,000** government schools on the off
 Giga turned out to be OpenStreetMap-derived here, so it added almost nothing. Overture's
 Pakistan schools come overwhelmingly from Meta (`meta=6,015` of those 6,042), which makes
 it genuinely independent — and is the difference between Tharparkar being analysable and
-being an artifact. Rasta uses **both**, de-duplicated at 75 m.
+being an artifact. Rasta uses **both**, de-duplicated at 75 m, which yields **6,390**
+schools across Sindh's 29 districts and leaves no district with zero.
 
-Even so, roughly one school in eight is visible. So Rasta measures distance to the nearest
+Even so, that is **13%** of the official count — roughly one school in eight. So Rasta measures distance to the nearest
 **mapped** school, labels every district with its completeness, and presents its output as
 **sites to field-verify** — never as confirmed gaps. A district showing few schools is
 telling you about the map, not about the district.
@@ -170,7 +172,7 @@ holds no secrets at all.
 
 ## Limitations
 
-- **Open school data is roughly 12% complete for Sindh.** Everything here is a shortlist to
+- **Open school data is roughly 13% complete for Sindh.** Everything here is a shortlist to
   field-verify. This is the single most important caveat and it is shown in the product.
 - **Distances are straight-line estimates with a detour factor, not routed along roads.**
   Fine for ranking; not a substitute for a routing engine where terrain is severe.
