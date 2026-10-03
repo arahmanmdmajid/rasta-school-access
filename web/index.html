@@ -3,826 +3,586 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Rasta — where should the next school go?</title>
-<meta name="description" content="Rasta helps NGOs in Pakistan find where children live beyond a 15-minute walk of a school, and which sites to field-verify first.">
+<title>Rasta — school starts with a long walk</title>
+<meta name="description" content="In Sindh, 10.6 million school-age children live more than a 15-minute walk from the nearest mapped school. Rasta shows where, and where one new centre would reach the most.">
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Rasta — school starts with a long walk">
+<meta property="og:description" content="10.6 million children in Sindh live beyond a 15-minute walk of a school. Rasta shows where a new one would reach the most.">
+<meta property="og:url" content="https://arahmanmdmajid-rasta-school-access.static.hf.space/">
+<meta property="og:site_name" content="Rasta">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Rasta — school starts with a long walk">
+<meta name="twitter:description" content="10.6 million children in Sindh live beyond a 15-minute walk of a school.">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 
 <style>
 :root{
-  --bg:#f7f6f3; --panel:#ffffff; --ink:#15211c; --muted:#5d6b64; --line:#e2e0da;
-  --accent:#0f766e; --accent-soft:#d6ece8;
-  --b0:#0f766e; --b1:#5aa88f; --b2:#e0b252; --b3:#dd8243; --b4:#c4453b;
-  --warn:#b45309; --warn-bg:#fdf4e3;
-  --shadow:0 1px 2px rgba(16,32,27,.06),0 8px 28px rgba(16,32,27,.08);
-  --r:14px;
-}
-:root[data-theme="dark"]{
-  --bg:#0d1412; --panel:#141d1a; --ink:#e8efec; --muted:#93a39c; --line:#243330;
-  --accent:#4fd1c5; --accent-soft:#12302c;
-  --b0:#2dd4bf; --b1:#5aa88f; --b2:#e0b252; --b3:#e08a4d; --b4:#e4584c;
-  --warn:#fbbf24; --warn-bg:#2a2112;
-  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.45);
-}
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --bg:#0d1412; --panel:#141d1a; --ink:#e8efec; --muted:#93a39c; --line:#243330;
-    --accent:#4fd1c5; --accent-soft:#12302c;
-    --b0:#2dd4bf; --b1:#5aa88f; --b2:#e0b252; --b3:#e08a4d; --b4:#e4584c;
-    --warn:#fbbf24; --warn-bg:#2a2112;
-    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.45);
-  }
+  --sand:#f6f1e8; --sand-2:#efe7da; --ink:#241c15; --muted:#6c6054;
+  --line:#e0d5c4;
+  --warm:#c4553d;        /* beyond the threshold */
+  --calm:#167d6e;        /* within reach */
+  --gold:#d9a441;
+  --accent:#167d6e;
+  --r:16px;
 }
 *{box-sizing:border-box}
-html,body{height:100%}
+html{scroll-behavior:smooth}
 body{
-  margin:0; background:var(--bg); color:var(--ink);
-  font:15px/1.55 "IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-  -webkit-font-smoothing:antialiased; overflow:hidden;
+  margin:0; background:var(--sand); color:var(--ink);
+  font:17px/1.65 "IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased;
 }
-h1,h2,h3{font-family:Fraunces,Georgia,serif; font-weight:600; letter-spacing:-.01em; margin:0}
-button{font:inherit; color:inherit; cursor:pointer}
+h1,h2,h3{font-family:Fraunces,Georgia,serif; font-weight:600; letter-spacing:-.018em; margin:0; line-height:1.08}
+a{color:var(--accent)}
+:focus-visible{outline:3px solid var(--calm); outline-offset:3px; border-radius:4px}
+.skip{position:absolute; left:-9999px; top:0; background:var(--ink); color:var(--sand); padding:10px 16px; z-index:99}
+.skip:focus{left:10px; top:10px}
 
-/* ---------- shell ---------- */
-#app{display:grid; grid-template-columns:400px 1fr; height:100vh}
-#map{height:100vh; width:100%; background:var(--bg)}
-.leaflet-container{font:inherit; background:var(--bg)}
-.basemap{transition:opacity .35s ease}
+/* ----------------------------------------------------------- intro ---- */
+#intro{
+  min-height:100svh; display:grid; place-items:center; padding:40px 24px;
+  background:radial-gradient(120% 90% at 50% 0%,var(--sand-2),var(--sand) 62%);
+}
+.introwrap{max-width:760px; text-align:center}
+.eyebrow{
+  font-size:12px; letter-spacing:.17em; text-transform:uppercase; color:var(--calm);
+  font-weight:600; margin:0 0 20px;
+}
+#intro h1{font-size:clamp(40px,7.4vw,78px)}
+#intro h1 em{font-style:italic; color:var(--warm)}
+.sub{font-size:clamp(17px,2.1vw,21px); color:var(--muted); margin:22px auto 0; max-width:54ch}
+.scrollcue{margin-top:46px; font-size:13px; color:var(--muted); letter-spacing:.06em}
+.scrollcue span{display:block; font-size:22px; margin-top:7px; animation:bob 2s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(7px)}}
 
-/* ---------- panel ---------- */
-#panel{
-  background:var(--panel); border-right:1px solid var(--line);
-  display:flex; flex-direction:column; overflow:hidden; z-index:600;
-}
-#head{padding:20px 22px 14px; border-bottom:1px solid var(--line)}
-.brandrow{display:flex; align-items:baseline; justify-content:space-between; gap:10px}
-#brand{font-size:27px; line-height:1}
-#brand em{font-style:normal; color:var(--accent)}
-.tag{font-size:11.5px; color:var(--muted); letter-spacing:.08em; text-transform:uppercase}
-#sub{color:var(--muted); font-size:13.5px; margin-top:7px}
-#scroll{overflow-y:auto; padding:18px 22px 26px; flex:1; scrollbar-width:thin}
+/* ------------------------------------------------------ scrollytell ---- */
+#story{position:relative; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.15fr)}
+#steps{padding:0 clamp(20px,4vw,64px)}
+#stagewrap{position:sticky; top:0; height:100svh; display:grid; place-items:center; padding:28px}
 
-.section{margin-bottom:22px}
-.label{font-size:11px; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); margin-bottom:9px; font-weight:600}
+.step{min-height:96svh; display:flex; align-items:center}
+.card{
+  background:rgba(255,255,255,.72); backdrop-filter:blur(7px);
+  border:1px solid var(--line); border-radius:var(--r);
+  padding:30px 32px; box-shadow:0 1px 2px rgba(36,28,21,.04),0 16px 44px rgba(36,28,21,.07);
+}
+.num{
+  font-size:12px; letter-spacing:.15em; color:var(--warm); font-weight:600;
+  text-transform:uppercase; margin:0 0 12px;
+}
+.card h2{font-size:clamp(26px,3.3vw,36px)}
+.card p{color:var(--muted); margin:16px 0 0; font-size:16.5px}
+.card p strong{color:var(--ink); font-weight:600}
 
-select{
-  width:100%; padding:11px 13px; border-radius:10px; border:1px solid var(--line);
-  background:var(--bg); color:var(--ink); font:inherit; cursor:pointer;
-}
-select:focus{outline:2px solid var(--accent); outline-offset:1px}
+/* ----------------------------------------------------------- stage ---- */
+#stage{width:100%; max-width:620px; aspect-ratio:1/1; position:relative}
+#stage svg{width:100%; height:100%; display:block; overflow:visible}
+.lay{opacity:0; transition:opacity .62s ease, transform .62s ease}
+.on{opacity:1}
 
-/* ---------- readout ---------- */
-#readout{
-  border:1px solid var(--line); border-radius:var(--r); padding:15px 16px;
-  background:linear-gradient(180deg,var(--accent-soft),transparent 70%);
-}
-#readout .hint{color:var(--muted); font-size:13px}
-.big{font-family:Fraunces,Georgia,serif; font-size:31px; line-height:1.08; font-weight:600}
-.big small{font-size:14px; font-family:"IBM Plex Sans",sans-serif; color:var(--muted); font-weight:400}
-.rowstat{display:flex; justify-content:space-between; gap:12px; padding:5px 0; font-size:13.5px; border-top:1px dashed var(--line)}
-.rowstat:first-of-type{border-top:0}
-.rowstat b{font-variant-numeric:tabular-nums; font-weight:600}
-.k{color:var(--muted)}
+#pathfig{transition:opacity .5s ease}
+.walkpath{fill:none; stroke:var(--line); stroke-width:7; stroke-linecap:round; stroke-dasharray:1 16}
+.walker{transition:transform 1.1s cubic-bezier(.4,0,.2,1)}
 
-/* ---------- stats ---------- */
-.grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
-.stat{border:1px solid var(--line); border-radius:12px; padding:12px 13px; background:var(--bg)}
-.stat .n{font-family:Fraunces,Georgia,serif; font-size:22px; font-weight:600; font-variant-numeric:tabular-nums}
-.stat .t{font-size:11.5px; color:var(--muted); margin-top:3px; line-height:1.35}
+.dot{transition:fill .55s ease, opacity .45s ease}
+.dot.far{fill:var(--warm)}
+.dot.near{fill:var(--calm)}
+.dot.plain{fill:#b3a797}
+.school{fill:var(--ink)}
+.newschool{fill:var(--gold); stroke:var(--ink); stroke-width:3}
+.reach{fill:var(--calm); fill-opacity:.1; stroke:var(--calm); stroke-opacity:.42; stroke-width:1.6;
+       transform-box:fill-box; transform-origin:center; transform:scale(.04);
+       transition:transform .85s cubic-bezier(.3,1.1,.4,1);}
+#reaches.grown .reach{transform:scale(1)}
+#newreach .reach{transition-delay:.1s}
 
-/* ---------- banner ---------- */
-.banner{
-  border:1px solid color-mix(in srgb,var(--warn) 35%,transparent); background:var(--warn-bg);
-  border-radius:12px; padding:12px 14px; font-size:12.8px; line-height:1.5;
+#counter{
+  position:absolute; inset:0; display:grid; place-items:center; text-align:center;
+  opacity:0; transition:opacity .5s ease; pointer-events:none;
 }
-.banner b{color:var(--warn)}
+#counter.on{opacity:1}
+#countnum{
+  font-family:Fraunces,Georgia,serif; font-size:clamp(46px,8vw,96px); font-weight:600;
+  line-height:1; font-variant-numeric:tabular-nums; color:var(--warm);
+}
+#countlabel{margin-top:14px; color:var(--muted); font-size:15.5px; max-width:30ch}
+#countdelta{margin-top:10px; font-size:14.5px; color:var(--calm); font-weight:600; opacity:0; transition:opacity .5s}
+#countdelta.on{opacity:1}
 
-/* ---------- legend / formula ---------- */
-.legrow{display:flex; align-items:center; gap:9px; font-size:13px; padding:3px 0}
-.sw{width:15px; height:15px; border-radius:4px; flex:none}
-#formula{
-  margin-top:10px; font-size:12.4px; color:var(--muted); border:1px dashed var(--line);
-  border-radius:10px; padding:10px 12px; background:var(--bg);
+/* step 5: the spreadsheet */
+#sheet{
+  position:absolute; inset:0; background:#e9e5de; border:1px solid var(--line);
+  border-radius:12px; padding:18px; opacity:0; transition:opacity .5s ease;
+  font:12.5px/1.9 ui-monospace,SFMono-Regular,Menlo,monospace; color:#7c7366; overflow:hidden;
 }
-#formula code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--ink); font-size:12px}
+#sheet.on{opacity:1}
+#sheet .r{display:grid; grid-template-columns:1.6fr 1fr 1fr; gap:8px; border-bottom:1px solid #dcd6cb; padding:3px 0}
+#sheet .r.h{color:#4a4339; font-weight:600}
+#stage.blurred svg{filter:blur(7px) saturate(.25); opacity:.3}
+svg, #sheet{transition:filter .5s ease, opacity .5s ease}
 
-/* ---------- shortlist ---------- */
-.site{
-  display:grid; grid-template-columns:26px 1fr auto; gap:11px; align-items:center;
-  width:100%; text-align:left; padding:10px 11px; border:1px solid var(--line);
-  border-radius:11px; background:var(--bg); margin-bottom:7px; transition:.15s;
+/* step 6: app preview tooltip */
+#tooltip{
+  position:absolute; left:50%; top:46%; transform:translate(-50%,-50%) scale(.94);
+  background:#fff; border:1px solid var(--line); border-radius:12px; padding:13px 15px;
+  box-shadow:0 12px 34px rgba(36,28,21,.18); opacity:0; transition:.5s ease; min-width:210px;
 }
-.site:hover{border-color:var(--accent); transform:translateX(2px)}
-.rank{
-  width:26px; height:26px; border-radius:8px; background:var(--accent); color:#fff;
-  display:grid; place-items:center; font-size:12.5px; font-weight:600;
-}
-:root[data-theme="dark"] .rank{color:#06201c}
-.site .m{font-size:12px; color:var(--muted)}
-.site .c{font-weight:600; font-variant-numeric:tabular-nums; font-size:14px}
+#tooltip.on{opacity:1; transform:translate(-50%,-50%) scale(1)}
+#tooltip .big{font-family:Fraunces,Georgia,serif; font-size:27px; font-weight:600; line-height:1}
+#tooltip .lbl{font-size:12px; color:var(--muted); margin-top:3px}
+#tooltip .row{display:flex; justify-content:space-between; gap:14px; font-size:12.5px; margin-top:9px;
+              padding-top:8px; border-top:1px dashed var(--line)}
 
-/* ---------- landing ---------- */
-#landing{
-  position:fixed; inset:0; z-index:1500; background:var(--bg);
-  display:grid; place-items:center; padding:30px; overflow-y:auto;
+/* ------------------------------------------------------------- end ---- */
+#end{padding:clamp(60px,10vw,120px) 24px 90px; text-align:center; background:var(--sand-2)}
+.endwrap{max-width:720px; margin:0 auto}
+#end h2{font-size:clamp(30px,5vw,50px)}
+#end p.lead{font-size:18px; color:var(--muted); margin:18px auto 0; max-width:46ch}
+.cta{
+  display:inline-block; margin-top:34px; background:var(--calm); color:#fff; text-decoration:none;
+  padding:17px 38px; border-radius:999px; font-weight:600; font-size:17.5px;
+  box-shadow:0 4px 14px rgba(22,125,110,.26); transition:transform .18s, box-shadow .18s;
 }
-#landing.hide{display:none}
-.lwrap{max-width:720px; width:100%}
-.eyebrow{font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); font-weight:600}
-#landing h1{font-size:clamp(38px,6.4vw,62px); line-height:1.02; margin:15px 0 0; letter-spacing:-.025em}
-#landing h1 em{font-style:italic; color:var(--accent)}
-.lead{font-size:17.5px; color:var(--muted); margin:17px 0 0; max-width:56ch; line-height:1.6}
-.facts{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:30px 0 0}
-.fact{border:1px solid var(--line); border-radius:var(--r); padding:15px 16px; background:var(--panel)}
-.fact .n{font-family:Fraunces,Georgia,serif; font-size:30px; font-weight:600; line-height:1}
-.fact .t{font-size:12.5px; color:var(--muted); margin-top:7px; line-height:1.4}
-.cta{display:flex; gap:11px; margin-top:28px; flex-wrap:wrap; align-items:center}
-.btn{
-  background:var(--accent); color:#fff; border:0; padding:13px 22px; border-radius:11px;
-  font-weight:600; font-size:15px; box-shadow:var(--shadow); transition:.15s;
+.cta:hover{transform:translateY(-2px); box-shadow:0 8px 24px rgba(22,125,110,.32)}
+.note{
+  margin-top:52px; text-align:left; background:var(--sand); border:1px solid var(--line);
+  border-radius:var(--r); padding:24px 26px; font-size:14px; color:var(--muted); line-height:1.72;
 }
-:root[data-theme="dark"] .btn:not(.ghost){color:#06201c}
-.btn:hover{transform:translateY(-1px)}
-.btn.ghost{background:transparent; color:var(--ink); border:1px solid var(--line); box-shadow:none}
-.btn.ghost:hover{border-color:var(--accent)}
-.src{margin-top:26px; font-size:12px; color:var(--muted); line-height:1.65}
-.src a{color:inherit}
+.note h3{font-size:16px; margin-bottom:10px; color:var(--ink)}
+.note dt{font-weight:600; color:var(--ink); margin-top:13px; font-size:13.5px}
+.note dd{margin:3px 0 0}
+.note a{color:var(--calm)}
+footer{padding:34px 24px 54px; text-align:center; font-size:13px; color:var(--muted)}
 
-/* ---------- ask: floating window over the map ---------- */
-/* The window stays shut until it is asked for. The button is what has to carry the
-   message that there is an AI behind this map, so it glows gently rather than sitting
-   there as another grey control. */
-#askfab{
-  position:absolute; right:18px; bottom:22px; z-index:1150;
-  display:flex; align-items:center; gap:8px;
-  background:var(--accent); color:#fff; border:0; border-radius:999px;
-  padding:12px 16px 12px 14px; font-weight:600; font-size:14.5px;
-  transition:transform .18s, box-shadow .18s;
-  animation:glow 2.8s ease-in-out infinite;
-}
-:root[data-theme="dark"] #askfab{color:#06201c}
-#askfab:hover{
-  transform:translateY(-2px); animation:none;
-  box-shadow:0 0 0 7px color-mix(in srgb,var(--accent) 22%,transparent),
-             0 10px 26px rgba(0,0,0,.26);
-}
-#askfab:focus-visible{outline:2px solid var(--ink); outline-offset:3px}
-
-/* A halo that breathes outward — reads as "live" without flashing at anyone. */
-@keyframes glow{
-  0%,100%{ box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 42%,transparent),
-                      0 6px 18px rgba(0,0,0,.2); }
-  50%    { box-shadow:0 0 0 11px color-mix(in srgb,var(--accent) 0%,transparent),
-                      0 6px 18px rgba(0,0,0,.2); }
-}
-#askfab .spark{
-  width:17px; height:17px; fill:currentColor; flex:none;
-  animation:twinkle 2.8s ease-in-out infinite;
-}
-@keyframes twinkle{0%,100%{opacity:.75; transform:scale(.92)}50%{opacity:1; transform:scale(1.06)}}
-#askfab .ai{
-  font-size:9.5px; letter-spacing:.09em; font-weight:700; padding:2px 6px;
-  border-radius:999px; background:rgba(255,255,255,.22); line-height:1.4;
-}
-:root[data-theme="dark"] #askfab .ai{background:rgba(0,0,0,.18)}
-#askfab[aria-expanded="true"]{opacity:0; pointer-events:none; animation:none}
-
-/* Someone who has asked for less motion gets a static button, not a pulsing one. */
-@media (prefers-reduced-motion:reduce){
-  #askfab, #askfab .spark{animation:none}
-  #askfab{box-shadow:0 0 0 5px color-mix(in srgb,var(--accent) 20%,transparent),
-                     0 6px 18px rgba(0,0,0,.2)}
-}
-
-#askwin{
-  position:absolute; right:18px; bottom:22px; z-index:1160; width:372px;
-  max-width:calc(100% - 36px); max-height:min(76vh,620px);
-  display:flex; flex-direction:column;
-  background:var(--panel); border:1px solid var(--line); border-radius:16px;
-  box-shadow:0 4px 14px rgba(0,0,0,.18),0 24px 60px rgba(0,0,0,.26);
-  animation:rise .18s ease-out;
-}
-/* Required. The browser hides [hidden] with display:none from its own stylesheet, but
-   the id selector above outranks it, so without this the window never actually closes -
-   the attribute flips and nothing moves. */
-#askwin[hidden]{display:none}
-@keyframes rise{from{opacity:0; transform:translateY(10px)}to{opacity:1; transform:none}}
-#askwin header{
-  display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
-  padding:14px 16px 11px; border-bottom:1px solid var(--line);
-}
-#askwin h2{font-size:17px; margin:0}
-#askwhere{margin:3px 0 0; font-size:12px; color:var(--muted)}
-#askclose{
-  background:transparent; border:0; font-size:22px; line-height:1; color:var(--muted);
-  width:34px; height:34px; display:grid; place-items:center;   /* a real hit target */
-  border-radius:9px; flex:none; margin:-4px -6px 0 0;
-}
-#askclose:hover{color:var(--ink); background:var(--bg)}
-#askclose:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
-#askbody{padding:14px 16px; overflow-y:auto; flex:1; scrollbar-width:thin}
-#askform{display:flex; gap:7px; padding:11px 14px 14px; border-top:1px solid var(--line)}
-#q{
-  flex:1; min-width:0; padding:10px 12px; border-radius:10px; border:1px solid var(--line);
-  background:var(--bg); color:var(--ink); font:inherit; font-size:14px;
-}
-#q:focus{outline:2px solid var(--accent); outline-offset:1px}
-#asksend{padding:10px 15px; font-size:14px; border-radius:10px; flex:none}
-#asksend[disabled]{opacity:.55}
-#chips{display:flex; flex-wrap:wrap; gap:6px}
-.chip{
-  background:var(--bg); border:1px solid var(--line); border-radius:999px;
-  padding:5px 11px; font-size:12px; color:var(--muted); transition:.15s;
-}
-.chip:hover{border-color:var(--accent); color:var(--ink)}
-#answer{margin-top:13px; border:1px solid var(--line); border-radius:var(--r); padding:14px 15px; background:var(--bg)}
-#answertext{margin:0; font-size:14px; line-height:1.6}
-#verdict{margin-top:10px; font-size:11.5px; display:flex; align-items:center; gap:7px}
-.pill{border-radius:999px; padding:3px 9px; font-weight:600; font-size:11px}
-.pill.ok{background:var(--accent-soft); color:var(--accent)}
-.pill.no{background:var(--warn-bg); color:var(--warn)}
-#tracebox{margin-top:11px; font-size:12px}
-#tracebox summary{cursor:pointer; color:var(--muted); user-select:none}
-#tracebox summary:hover{color:var(--ink)}
-#trace{margin:10px 0 0; padding-left:19px; line-height:1.55}
-#trace li{margin-bottom:6px; color:var(--muted)}
-#trace b{color:var(--ink); font-weight:600}
-#trace .kind{
-  font-size:9.5px; letter-spacing:.07em; text-transform:uppercase; padding:1px 5px;
-  border-radius:4px; border:1px solid var(--line); margin-left:5px;
-}
-#trace .llm{color:var(--b2); border-color:var(--b2)}
-#trace .code{color:var(--accent); border-color:var(--accent)}
-
-/* ---------- misc ---------- */
-#themebtn{
-  background:transparent; border:1px solid var(--line); border-radius:9px;
-  width:32px; height:32px; display:grid; place-items:center; flex:none;
-}
-#tip{
-  position:absolute; z-index:1200; pointer-events:none; background:var(--panel);
-  border:1px solid var(--line); border-radius:9px; padding:6px 9px; font-size:12px;
-  box-shadow:var(--shadow); opacity:0; transition:opacity .12s;
-}
-#loading{
-  position:absolute; inset:0; display:grid; place-items:center; z-index:900;
-  background:color-mix(in srgb,var(--bg) 82%,transparent); font-size:14px; color:var(--muted);
-}
-#loading.hide{display:none}
-.spin{
-  width:17px;height:17px;border:2px solid var(--line);border-top-color:var(--accent);
-  border-radius:50%;animation:sp .7s linear infinite; display:inline-block; vertical-align:-3px; margin-right:8px;
-}
-@keyframes sp{to{transform:rotate(360deg)}}
-.foot{font-size:11.5px; color:var(--muted); line-height:1.6; border-top:1px solid var(--line); padding-top:14px}
-.foot a{color:inherit}
-
+/* ---------------------------------------------------------- mobile ---- */
 @media (max-width:900px){
-  body{overflow:auto}
-  #app{grid-template-columns:1fr; height:auto}
-  #panel{height:auto; max-height:none; border-right:0; border-bottom:1px solid var(--line)}
-  #scroll{overflow:visible}
-  #map{height:62vh; position:sticky; top:0}
-  .facts{grid-template-columns:1fr}
-
-  /* On a phone the floating window becomes a bottom sheet across the full width —
-     a 372px card pinned to a corner is unusable at this size. */
-  #askfab{right:12px; bottom:14px; padding:11px 17px 11px 15px; font-size:14px}
-  #askwin{
-    right:8px; left:8px; bottom:8px; width:auto; max-width:none;
-    max-height:min(80vh,560px); border-radius:14px;
+  #story{display:block}
+  #stagewrap{
+    position:fixed; inset:0; height:100svh; z-index:0; padding:18px; pointer-events:none;
   }
+  #stage{max-width:min(92vw,520px); opacity:.5}
+  #steps{position:relative; z-index:1; padding:0 18px}
+  .step{min-height:92svh}
+  .card{background:rgba(255,255,255,.9); padding:24px 22px}
+  #end,#intro{position:relative; z-index:2; background:var(--sand-2)}
+  #intro{background:radial-gradient(120% 90% at 50% 0%,var(--sand-2),var(--sand) 62%)}
 }
+
+/* ------------------------------------------- no motion, and no JS ---- */
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,::before,::after{animation:none !important; transition:none !important}
+  .lay{opacity:1}
+  #reaches .reach{transform:scale(1)}
+}
+/* Without JS nothing observes scrolling, so show the story's end state and let the
+   text carry it. The page must be readable either way. */
+.nojs .lay{opacity:1}
+.nojs #reaches .reach{transform:scale(1)}
+.nojs #stagewrap{position:relative; height:auto; min-height:70svh}
 </style>
 </head>
-<body>
+<body class="nojs">
+<a class="skip" href="#end">Skip the story, explore the map</a>
 
-<!-- ======================= LANDING ======================= -->
-<div id="landing">
-  <div class="lwrap">
-    <p class="eyebrow">Pakistan · school access · open data</p>
-    <h1>Where should the <em>next school</em> go?</h1>
-    <p class="lead">
-      UNESCO finds that girls aged 10–12 who walk 45–60 minutes to school are 15% less likely
-      to attend than those within 15 minutes. <strong>Rasta</strong> turns that finding into a map:
-      it shows where children live beyond a 15-minute walk of a school, and ranks the sites an
-      NGO should field-verify first.
+<!-- ============================ INTRO ============================ -->
+<section id="intro">
+  <div class="introwrap">
+    <p class="eyebrow">Sindh, Pakistan · open data</p>
+    <h1>School starts with a <em>long walk</em></h1>
+    <p class="sub">
+      UNESCO finds girls who walk 45–60 minutes to school are 15% less likely to attend
+      than those within 15 minutes. This is what that looks like on a map.
     </p>
-
-    <div class="facts">
-      <div class="fact"><div class="n">26.2M</div><div class="t">children out of school in Pakistan — the world's second-highest</div></div>
-      <div class="fact"><div class="n">15 min</div><div class="t">the walking threshold above which attendance starts to fall</div></div>
-      <div class="fact"><div class="n">~3%</div><div class="t">of Sindh's schools that exist in open map data at all</div></div>
-    </div>
-
-    <div class="cta">
-      <button class="btn" id="enter">Open the map</button>
-      <button class="btn ghost" id="themebtn2">Switch theme</button>
-    </div>
-
-    <p class="src">
-      That last number is the catch, and we show it rather than hide it. We tested three independent
-      sources for Sindh — OpenStreetMap (1,571 schools), UNICEF Giga (1,557, and OSM-derived) — against
-      roughly 48,000 schools on the official count. So Rasta reports distance to the nearest
-      <em>mapped</em> school, and every output is a list of places to <strong>field-verify</strong>,
-      never a confirmed gap.<br><br>
-      Data: UNICEF Giga (ODbL) · Kontur population (CC-BY) · Meta Relative Wealth Index (CC-BY-NC) ·
-      OCHA administrative boundaries (CC-BY-IGO) · basemap © Esri.
-    </p>
+    <p class="scrollcue">Scroll <span aria-hidden="true">&darr;</span></p>
   </div>
-</div>
+</section>
 
-<!-- ======================= APP ======================= -->
-<div id="app">
-  <aside id="panel">
-    <div id="head">
-      <div class="brandrow">
-        <h1 id="brand">Ras<em>ta</em></h1>
-        <button id="themebtn" title="Switch theme" aria-label="Switch theme">◐</button>
+<!-- ============================ STORY ============================ -->
+<div id="story">
+  <div id="steps">
+
+    <section class="step" data-step="1">
+      <div class="card">
+        <p class="num">One</p>
+        <h2>For millions of children, school starts with a long walk.</h2>
+        <p>Not a bus ride. Not a drive. An hour on foot, twice a day, in the heat.</p>
       </div>
-      <p id="sub">Walking access to school, district by district.</p>
-    </div>
-
-    <div id="scroll">
-      <div class="section">
-        <div class="label">District</div>
-        <select id="pick" aria-label="Choose a district"></select>
-      </div>
-
-      <div class="section">
-        <div class="label">Put a centre here</div>
-        <div id="readout">
-          <p class="hint" id="hint">Move the cursor over the map. The circle is one 15-minute walk.</p>
-          <div id="live" style="display:none">
-            <div class="big"><span id="reach">—</span> <small>children reached</small></div>
-            <div style="margin-top:11px">
-              <div class="rowstat"><span class="k">Walk to nearest school</span><b id="walkmin">—</b></div>
-              <div class="rowstat"><span class="k">People in this cell</span><b id="cellpop">—</b></div>
-              <div class="rowstat"><span class="k">Relative wealth</span><b id="cellrwi">—</b></div>
-            </div>
-          </div>
-        </div>
-        <div id="formula">
-          A catchment here is a circle because the model is closed-form:<br>
-          <code id="formulatext">15 min × 4 km/h ÷ 1.3 detour = 769 m</code>
-        </div>
-      </div>
-
-      <div class="section">
-        <div class="label">District totals</div>
-        <div class="grid2">
-          <div class="stat"><div class="n" id="s-children">—</div><div class="t">school-age children (estimated)</div></div>
-          <div class="stat"><div class="n" id="s-under">—</div><div class="t">beyond a 15-minute walk</div></div>
-          <div class="stat"><div class="n" id="s-schools">—</div><div class="t">schools in open data</div></div>
-          <div class="stat"><div class="n" id="s-hex">—</div><div class="t">population cells analysed</div></div>
-        </div>
-      </div>
-
-      <div class="section">
-        <div class="banner" id="conf">—</div>
-      </div>
-
-      <div class="section">
-        <div class="label">Sites to field-verify</div>
-        <div id="sites"></div>
-      </div>
-
-      <div class="section">
-        <div class="label">Walk to nearest mapped school</div>
-        <div id="legend"></div>
-      </div>
-
-      <p class="foot">
-        Distances are straight-line estimates inflated by a detour factor, not routed along roads.
-        Child counts apply a national age share to gridded population, so they are estimates.<br><br>
-        UNICEF Giga (ODbL) · Kontur (CC-BY) · Meta RWI (CC-BY-NC) · OCHA COD (CC-BY-IGO) ·
-        basemap © Esri · <a href="https://github.com/arahmanmdmajid/rasta-school-access">source</a>
-      </p>
-    </div>
-  </aside>
-
-  <div style="position:relative">
-    <div id="map"></div>
-    <div id="loading"><span><span class="spin"></span>Loading district…</span></div>
-    <div id="tip"></div>
-
-    <!-- The agent pipeline floats over the map rather than competing with the shortlist
-         for panel space: you are asking about the thing you are looking at. -->
-    <button id="askfab" aria-expanded="false" aria-controls="askwin">
-      <svg class="spark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-        <path d="M12 2.6l1.9 5.3 5.3 1.9-5.3 1.9L12 17l-1.9-5.3L4.8 9.8l5.3-1.9z"/>
-        <path d="M18.6 14.6l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" opacity=".75"/>
-      </svg>
-      <span>Ask the map</span>
-      <span class="ai">AI</span>
-    </button>
-
-    <section id="askwin" hidden aria-labelledby="asktitle">
-      <header>
-        <div>
-          <h2 id="asktitle">Ask the map</h2>
-          <p id="askwhere">—</p>
-        </div>
-        <button id="askclose" type="button" aria-label="Close">&times;</button>
-      </header>
-
-      <div id="askbody">
-        <div id="chips"></div>
-        <div id="answer" hidden>
-          <p id="answertext"></p>
-          <div id="verdict"></div>
-          <details id="tracebox">
-            <summary>How this answer was produced</summary>
-            <ol id="trace"></ol>
-          </details>
-        </div>
-      </div>
-
-      <form id="askform">
-        <input id="q" type="text" autocomplete="off"
-               placeholder="Where should we open learning centres?" aria-label="Ask a question">
-        <button class="btn" id="asksend" type="submit">Ask</button>
-      </form>
     </section>
+
+    <section class="step" data-step="2">
+      <div class="card">
+        <p class="num">Two</p>
+        <h2>This is one district. Every dot is where children live.</h2>
+        <p><strong>Malir, Karachi.</strong> The dark markers are the <strong>352 schools</strong>
+           that exist in open map data.</p>
+      </div>
+    </section>
+
+    <section class="step" data-step="3">
+      <div class="card">
+        <p class="num">Three</p>
+        <h2>Draw a 15-minute walk around each school.</h2>
+        <p>That circle is <strong>769 metres</strong>. Children inside it are within reach.
+           Everyone still red is not.</p>
+      </div>
+    </section>
+
+    <section class="step" data-step="4">
+      <div class="card">
+        <p class="num">Four</p>
+        <h2>Across Sindh, the red adds up.</h2>
+        <p><strong>10.6 million</strong> school-age children live beyond a 15-minute walk of
+           any mapped school — <strong>61%</strong> of them.</p>
+      </div>
+    </section>
+
+    <section class="step" data-step="5">
+      <div class="card">
+        <p class="num">Five</p>
+        <h2>Most planning never sees this.</h2>
+        <p>Budgets are set from district spreadsheets. A row of totals cannot show you
+           <em>which</em> children are too far, or where.</p>
+      </div>
+    </section>
+
+    <section class="step" data-step="6">
+      <div class="card">
+        <p class="num">Six</p>
+        <h2>Rasta puts the gap on the map.</h2>
+        <p>Move the cursor anywhere. It reads out how many underserved children a centre
+           at that spot would reach.</p>
+      </div>
+    </section>
+
+    <section class="step" data-step="7">
+      <div class="card">
+        <p class="num">Seven</p>
+        <h2>One well-placed centre, nine thousand children.</h2>
+        <p>Rasta's top-ranked site in Malir brings <strong>9,957</strong> children within a
+           15-minute walk. Ten sites reach nearly fifty thousand.</p>
+      </div>
+    </section>
+
+  </div>
+
+  <div id="stagewrap">
+    <div id="stage" role="img"
+         aria-label="A district map of Malir, Karachi. Dots show where children live and dark markers show schools. Circles of 769 metres grow around each school; children outside them stay red. A new school is added and the children near it turn green.">
+      <svg viewBox="0 0 1000 1000" aria-hidden="true">
+        <g id="pathfig">
+          <path class="walkpath" d="M120,760 C300,700 330,470 500,430 C680,388 720,250 880,230"/>
+          <circle cx="880" cy="230" r="17" fill="var(--calm)"/>
+          <text x="880" y="196" text-anchor="middle" font-size="26" fill="var(--muted)"
+                font-family="IBM Plex Sans,sans-serif">school</text>
+          <g class="walker" id="walker" transform="translate(120,760)">
+            <circle cx="0" cy="-26" r="11" fill="var(--warm)"/>
+            <path d="M0,-15 L0,6 M-11,-6 L11,-6 M0,6 L-9,24 M0,6 L9,24"
+                  stroke="var(--warm)" stroke-width="5.5" stroke-linecap="round" fill="none"/>
+          </g>
+        </g>
+
+        <g id="district" class="lay">
+          <g id="reaches"></g>
+          <g id="newreach"></g>
+          <g id="dots"></g>
+          <g id="schools"></g>
+          <g id="newschool"></g>
+        </g>
+      </svg>
+
+      <div id="counter">
+        <div>
+          <div id="countnum">0</div>
+          <div id="countlabel">children in Sindh beyond a 15-minute walk of a mapped school</div>
+          <div id="countdelta">&minus;9,957 from one new centre</div>
+        </div>
+      </div>
+
+      <div id="sheet">
+        <div class="r h"><span>District</span><span>Schools</span><span>Enrolled</span></div>
+        <div class="r"><span>Malir</span><span>352</span><span>—</span></div>
+        <div class="r"><span>Tharparkar</span><span>55</span><span>—</span></div>
+        <div class="r"><span>Dadu</span><span>82</span><span>—</span></div>
+        <div class="r"><span>Khairpur</span><span>166</span><span>—</span></div>
+        <div class="r"><span>Sukkur</span><span>158</span><span>—</span></div>
+        <div class="r"><span>Badin</span><span>78</span><span>—</span></div>
+        <div class="r"><span>Thatta</span><span>56</span><span>—</span></div>
+        <div class="r"><span>Sanghar</span><span>144</span><span>—</span></div>
+      </div>
+
+      <div id="tooltip">
+        <div class="big">9,957</div>
+        <div class="lbl">children reached</div>
+        <div class="row"><span>Walk to nearest school</span><strong>34 min</strong></div>
+        <div class="row"><span>Relative wealth</span><strong>poorer</strong></div>
+      </div>
+    </div>
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<!-- ============================= END ============================= -->
+<section id="end">
+  <div class="endwrap">
+    <h2>See where one new school reaches the most children.</h2>
+    <p class="lead">
+      Twenty-nine districts of Sindh, with a walking catchment that follows your cursor
+      and a ranked shortlist of sites to field-verify.
+    </p>
+    <a class="cta" href="map.html">Explore your district &rarr;</a>
+
+    <div class="note">
+      <h3>Data and method</h3>
+      <dl>
+        <dt>What the numbers mean</dt>
+        <dd>Distance is to the nearest <em>mapped</em> school, estimated in a straight line
+            &times; 1.3 detour factor &divide; 4 km/h — about <strong>769 m for 15 minutes</strong>.
+            Not routed along roads. The 15-minute threshold comes from the UNESCO Global
+            Education Monitoring Report 2026.</dd>
+
+        <dt>How complete is the map</dt>
+        <dd>Only about <strong>13%</strong> of Sindh's schools appear in open data: 6,390 mapped
+            against roughly 48,000 on the official count. So every output is a list of places to
+            <strong>field-verify</strong>, never a confirmed gap. A district showing few schools is
+            telling you about the map, not about the district.</dd>
+
+        <dt>Child counts are estimates</dt>
+        <dd>A national age share is applied to gridded population, so figures are modelled
+            estimates and not census counts.</dd>
+
+        <dt>Sources</dt>
+        <dd><a href="https://maps.giga.global/">UNICEF Giga</a> and
+            <a href="https://overturemaps.org/">Overture Maps</a> schools ·
+            <a href="https://data.humdata.org/dataset/kontur-population-pakistan">Kontur</a> population ·
+            <a href="https://data.humdata.org/dataset/relative-wealth-index">Meta Relative Wealth Index</a> ·
+            <a href="https://data.humdata.org/dataset/cod-ab-pak">OCHA</a> boundaries ·
+            basemap &copy; Esri.</dd>
+
+        <dt>Licence</dt>
+        <dd>Code <a href="https://github.com/arahmanmdmajid/rasta-school-access">MIT</a>.
+            Derived district data ODbL, because it is built in part from ODbL sources.
+            The wealth index is CC-BY-NC, so the data is not offered for commercial use.</dd>
+      </dl>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Rasta · <a href="https://github.com/arahmanmdmajid/rasta-school-access">source</a> ·
+  built on open data, with its gaps shown
+</footer>
+
 <script>
-// Rasta — static page. Every district is a precomputed bundle, so the map, the hover
-// catchment and the shortlist need no server at all: nothing here can be broken by a
-// sleeping backend.
+document.body.classList.remove("nojs");
 
-const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-const fmt = n => n == null || !isFinite(n) ? "—" : Math.round(n).toLocaleString();
-const isDark = () => (document.documentElement.dataset.theme || "")
-  ? document.documentElement.dataset.theme === "dark"
-  : matchMedia("(prefers-color-scheme: dark)").matches;
+const REDUCED = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const $ = s => document.querySelector(s);
+const SVGNS = "http://www.w3.org/2000/svg";
 
-/* ---------------- theme ---------------- */
-function setTheme(t){
-  document.documentElement.dataset.theme = t;
-  try{ localStorage.setItem("rasta-theme", t); }catch(e){}
-  if (window.basemaps){
-    basemaps.light.setOpacity(t === "dark" ? 0 : 1);
-    basemaps.dark.setOpacity(t === "dark" ? 1 : 0);
-  }
-  if (window.BUNDLE) { paintChoropleth(); paintLegend(); }
-}
-let saved = null;
-try{ saved = localStorage.getItem("rasta-theme"); }catch(e){}
-setTheme(saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
-const toggle = () => setTheme(isDark() ? "light" : "dark");
-document.getElementById("themebtn").onclick = toggle;
-document.getElementById("themebtn2").onclick = toggle;
+// Real figures, computed from the district bundles this site ships.
+const SINDH_BEYOND = 10579971;               // summed from the 29 bundles in districts/
+const DISTRICT = "districts/PK714.json";     // Malir, Karachi
 
-/* ---------------- map ---------------- */
-const TILES = {
-  light:"https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
-  dark :"https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
-};
-const map = L.map("map", { zoomControl:true, preferCanvas:false }).setView([25.6, 68.5], 7);
-const opt = { attribution:"Tiles &copy; Esri &middot; Schools &copy; UNICEF Giga / OpenStreetMap contributors (ODbL)", maxNativeZoom:16, maxZoom:18, opacity:0, className:"basemap" };
-const basemaps = {
-  light: L.tileLayer(TILES.light, opt).addTo(map),
-  dark : L.tileLayer(TILES.dark , opt).addTo(map),
-};
-window.basemaps = basemaps;
-basemaps.light.setOpacity(isDark() ? 0 : 1);
-basemaps.dark.setOpacity(isDark() ? 1 : 0);
+const stage = $("#stage");
+let CELLS = null, SCHOOLS = null, NEWSITE = null, R_PX = 0;
+let DISTRICT_BEYOND = 444816, NEW_SITE_REACH = 9957, REACHED_N = 11, REACHED = new Set();
 
-const choro  = L.layerGroup().addTo(map);
-const schoolLayer = L.layerGroup().addTo(map);
-const marks  = L.layerGroup().addTo(map);
+/* ---------------------------------------------------------- build ---- */
+// Projects the real district into the 1000x1000 viewBox. If the data cannot be
+// fetched the story still runs: a generated layout stands in, and the step copy
+// does not depend on anything the fetch returns.
+async function build(){
+  let b = null;
+  try{
+    const res = await fetch(DISTRICT, { cache:"default" });
+    if (res.ok) b = await res.json();
+  }catch(e){ /* fall through to the stand-in */ }
 
-// The catchment circle is created once and only moved. Rebuilding it per frame is what
-// makes this kind of hover feel sticky.
-const ring = L.circle([0,0], { radius:769, interactive:false, color:css("--accent"), weight:2, fillColor:css("--accent"), fillOpacity:.1 });
+  const dots = $("#dots"), schools = $("#schools"), reaches = $("#reaches");
 
-/* ---------------- state ---------------- */
-let BUNDLE = null, IDX = null;
-let CELLS = null;          // parallel arrays, straight from the bundle
-let XY = null;             // cell centres in local metres
-let BUCKETS = null;        // integer-keyed spatial index
-const BUCKET_M = 1000;
-let kx = 1, ky = 110540, lat0 = 25;
+  if (b){
+    const [w,s,e,n] = b.bounds;
+    const pad = 70, span = Math.max(e-w, n-s);
+    const px = lon => pad + ((lon - w) / span) * (1000 - pad*2);
+    const py = lat => (1000 - pad) - ((lat - s) / span) * (1000 - pad*2);
+    R_PX = (b.params.radius_m / 111320) / span * (1000 - pad*2);
 
-const bandColors = () => [css("--b0"),css("--b1"),css("--b2"),css("--b3"),css("--b4")];
-
-/* ---------------- spatial index ---------------- */
-function buildIndex(){
-  const n = CELLS.lon.length;
-  lat0 = CELLS.lat.reduce((a,b)=>a+b,0)/n;
-  kx = 111320 * Math.cos(lat0*Math.PI/180);
-  ky = 110540;
-  XY = { x:new Float64Array(n), y:new Float64Array(n) };
-  BUCKETS = new Map();
-  for (let i=0;i<n;i++){
-    const x = CELLS.lon[i]*kx, y = CELLS.lat[i]*ky;
-    XY.x[i] = x; XY.y[i] = y;
-    const k = (Math.floor(x/BUCKET_M)*100000) + Math.floor(y/BUCKET_M);
-    let arr = BUCKETS.get(k);
-    if (!arr) BUCKETS.set(k, arr = []);
-    arr.push(i);
-  }
-}
-function candidates(x, y, rings){
-  const bx = Math.floor(x/BUCKET_M), by = Math.floor(y/BUCKET_M), out = [];
-  for (let dx=-rings; dx<=rings; dx++)
-    for (let dy=-rings; dy<=rings; dy++){
-      const arr = BUCKETS.get(((bx+dx)*100000) + (by+dy));
-      if (arr) out.push(...arr);
+    // Sample the cells so the picture stays legible and the DOM stays small.
+    const n_ = b.cells.lon.length, want = 420, stepN = Math.max(1, Math.floor(n_ / want));
+    CELLS = [];
+    for (let i = 0; i < n_; i += stepN){
+      CELLS.push({ x:px(b.cells.lon[i]), y:py(b.cells.lat[i]),
+                   far: b.cells.min[i] > b.params.threshold_min });
     }
-  return out;
-}
-// For a regular hex tiling the containing hexagon is the one whose centre is nearest,
-// so this is exact, not an approximation — and needs no point-in-polygon test.
-function nearestCell(x, y){
-  let best = -1, bestD = Infinity;
-  for (const i of candidates(x, y, 1)){
-    const d = (XY.x[i]-x)**2 + (XY.y[i]-y)**2;
-    if (d < bestD){ bestD = d; best = i; }
+    const sf = (b.schools.features || []).filter((_,i) => i % 2 === 0).slice(0, 170);
+    SCHOOLS = sf.map(f => ({ x:px(f.geometry.coordinates[0]), y:py(f.geometry.coordinates[1]) }));
+    const top = b.shortlist && b.shortlist[0];
+    if (top){
+      NEWSITE = { x:px(top.lon), y:py(top.lat) };
+      DISTRICT_BEYOND = b.totals.children_underserved_est;
+      NEW_SITE_REACH = top.children_reached;
+      // How many of the drawn dots one new centre honestly accounts for. The site
+      // reaches 9,957 of 444,816 underserved children - about 2% - so about 2% of the
+      // dots change, and they are the ones nearest the site. Colouring more would be
+      // a nicer animation and a lie about what one building does.
+      REACHED_N = Math.max(1, Math.round(CELLS.length * NEW_SITE_REACH / DISTRICT_BEYOND));
+    }
+  }else{
+    // Stand-in, deterministic so it never looks like noise.
+    CELLS = []; SCHOOLS = []; R_PX = 62;
+    for (let i = 0; i < 420; i++){
+      const a = i * 2.39996, r = 60 + Math.sqrt(i / 420) * 390;
+      CELLS.push({ x:500 + Math.cos(a)*r, y:500 + Math.sin(a)*r*.92, far:true });
+    }
+    for (let i = 0; i < 26; i++){
+      const a = i * 1.7, r = 70 + (i / 26) * 300;
+      SCHOOLS.push({ x:500 + Math.cos(a)*r*.9, y:500 + Math.sin(a)*r*.8 });
+    }
+    NEWSITE = { x:690, y:660 };
+    CELLS.forEach(c => { c.far = !SCHOOLS.some(s => Math.hypot(s.x-c.x, s.y-c.y) < R_PX); });
   }
-  return best;
-}
-function childrenReached(x, y){
-  const r = BUNDLE.params.radius_m, r2 = r*r, thr = BUNDLE.params.threshold_min;
-  let sum = 0;
-  for (const i of candidates(x, y, Math.ceil(r/BUCKET_M)+1)){
-    if (CELLS.min[i] <= thr) continue;          // already within a 15-minute walk
-    if ((XY.x[i]-x)**2 + (XY.y[i]-y)**2 <= r2) sum += CELLS.ch[i];
-  }
-  return sum;
-}
 
-/* ---------------- hover ---------------- */
-let pending = null, raf = 0;
-map.on("mousemove", e => { pending = e.latlng; if (!raf) raf = requestAnimationFrame(flush); });
-map.on("mouseout", () => { document.getElementById("live").style.display="none"; document.getElementById("hint").style.display=""; });
-map.on("click", e => { pending = e.latlng; flush(); });   // touch and keyboard users
-
-function flush(){
-  raf = 0;
-  if (!pending || !CELLS) return;
-  const ll = pending;
-  ring.setLatLng(ll);
-  if (!map.hasLayer(ring)) ring.addTo(map);
-
-  const x = ll.lng*kx, y = ll.lat*ky;
-  const i = nearestCell(x, y);
-  const reached = childrenReached(x, y);
-
-  document.getElementById("hint").style.display = "none";
-  document.getElementById("live").style.display = "";
-  document.getElementById("reach").textContent  = fmt(reached);
-  const noSupply = BUNDLE.params.no_supply_min || 999;
-  document.getElementById("walkmin").textContent =
-    i < 0 ? "—"
-    : CELLS.min[i] >= noSupply ? "no mapped school"
-    : CELLS.min[i].toFixed(0) + " min";
-  document.getElementById("cellpop").textContent = i < 0 ? "—" : fmt(CELLS.pop[i]);
-  const rwi = i < 0 ? null : CELLS.rwi[i];
-  document.getElementById("cellrwi").textContent = rwi == null ? "—"
-    : (rwi < -0.4 ? "poorer" : rwi > 0.2 ? "better off" : "mid") + " (" + rwi.toFixed(2) + ")";
-}
-
-/* ---------------- render ---------------- */
-// Hexagons are rebuilt here rather than shipped as polygons. The bundle carries one
-// shared set of six vertex offsets in metres, which reproduces every Kontur cell to
-// within about 4 m, so twelve numbers stand in for roughly a megabyte of coordinates.
-//
-// All the cells of one class go into a SINGLE L.polygon as a list of rings, which
-// Leaflet draws as one SVG path with many subpaths. Five paths total, whatever the
-// district: thousands of individual polygons would make panning sticky.
-function paintChoropleth(){
-  choro.clearLayers();
-  const cols = bandColors();
-  const offs = BUNDLE.hex_offsets_m;
-  const n = CELLS.lon.length;
-  if (!offs || !offs.length) return;
-
-  const byClass = [[], [], [], [], []];
-  for (let i = 0; i < n; i++){
-    const lon = CELLS.lon[i], lat = CELLS.lat[i];
-    const ring = offs.map(([dx, dy]) => [lat + dy / ky, lon + dx / kx]);
-    byClass[Math.min(CELLS.cls[i], 4)].push(ring);
-  }
-  byClass.forEach((rings, c) => {
-    if (!rings.length) return;
-    // Translucent on purpose: the basemap underneath is how an officer recognises the
-    // place they are looking at.
-    L.polygon(rings, {
-      stroke:false, fillColor:cols[c], fillOpacity: isDark() ? .5 : .42, interactive:false,
-    }).addTo(choro);
+  const frag = document.createDocumentFragment();
+  CELLS.forEach((c, i) => {
+    const el = document.createElementNS(SVGNS, "circle");
+    el.setAttribute("cx", c.x.toFixed(1)); el.setAttribute("cy", c.y.toFixed(1));
+    el.setAttribute("r", 4.6);
+    el.setAttribute("class", "dot plain");
+    el.style.transitionDelay = (i % 24) * 9 + "ms";     // a sweep, not a flash
+    frag.appendChild(el);
   });
-}
-function paintSchools(){
-  schoolLayer.clearLayers();
-  L.geoJSON(BUNDLE.schools, {
-    // interactive:false matters: interactive markers swallow mousemove and punch dead
-    // spots in the hover readout.
-    pointToLayer: (f, ll) => L.circleMarker(ll, {
-      radius:3.5, color:"#fff", weight:1, fillColor:css("--ink"), fillOpacity:.85, interactive:false,
-    }),
-  }).addTo(schoolLayer);
-}
-function paintLegend(){
-  const cols = bandColors(), b = BUNDLE.params.bands_min;
-  const labels = [`under ${b[0]} min`, `${b[0]}–${b[1]} min`, `${b[1]}–${b[2]} min`, `${b[2]}–${b[3]} min`, `over ${b[3]} min`];
-  document.getElementById("legend").innerHTML = labels.map((t,i) =>
-    `<div class="legrow"><span class="sw" style="background:${cols[i]}"></span>${t}</div>`).join("")
-    + `<div class="legrow" style="margin-top:6px"><span class="sw" style="background:var(--ink);border-radius:50%;width:9px;height:9px;margin-left:3px"></span>mapped school</div>`;
-}
-function paintSites(){
-  const el = document.getElementById("sites");
-  if (!BUNDLE.shortlist.length){ el.innerHTML = `<p class="hint">No underserved cells in this district.</p>`; return; }
-  el.innerHTML = BUNDLE.shortlist.map((s,i) =>
-    `<button class="site" data-i="${i}">
-       <span class="rank">${i+1}</span>
-       <span><span class="c">${fmt(s.children_reached)}</span> children<br>
-         <span class="m">${s.walk_min_to_nearest.toFixed(0)} min to nearest mapped school</span></span>
-       <span class="m">▸</span>
-     </button>`).join("");
-  marks.clearLayers();
-  BUNDLE.shortlist.forEach((s,i) => {
-    L.marker([s.lat, s.lon], { icon: L.divIcon({
-      className:"", iconSize:[22,22],
-      html:`<div style="width:22px;height:22px;border-radius:7px;background:${css("--accent")};color:${isDark()?"#06201c":"#fff"};display:grid;place-items:center;font:600 12px 'IBM Plex Sans',sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.3)">${i+1}</div>`,
-    })}).addTo(marks);
+  dots.appendChild(frag);
+
+  SCHOOLS.forEach(s => {
+    const el = document.createElementNS(SVGNS, "rect");
+    el.setAttribute("x", (s.x-5).toFixed(1)); el.setAttribute("y", (s.y-5).toFixed(1));
+    el.setAttribute("width", 10); el.setAttribute("height", 10);
+    el.setAttribute("rx", 2.5); el.setAttribute("class", "school");
+    $("#schools").appendChild(el);
+
+    const c = document.createElementNS(SVGNS, "circle");
+    c.setAttribute("cx", s.x.toFixed(1)); c.setAttribute("cy", s.y.toFixed(1));
+    c.setAttribute("r", Math.max(R_PX, 8).toFixed(1));
+    c.setAttribute("class", "reach");
+    reaches.appendChild(c);
   });
-  el.querySelectorAll(".site").forEach(b => b.onclick = () => {
-    const s = BUNDLE.shortlist[+b.dataset.i];
-    map.flyTo([s.lat, s.lon], 14, { duration:.7 });
-  });
+
+  if (NEWSITE){
+    // The dots this centre accounts for are the nearest underserved ones, and the ring
+    // is drawn to enclose exactly those - so the circle and the count agree.
+    const far = CELLS.map((c, i) => ({ i, d: Math.hypot(NEWSITE.x - c.x, NEWSITE.y - c.y) }))
+                     .filter(o => CELLS[o.i].far)
+                     .sort((a, b2) => a.d - b2.d)
+                     .slice(0, REACHED_N);
+    REACHED = new Set(far.map(o => o.i));
+    const ringR = far.length ? far[far.length - 1].d + 10 : Math.max(R_PX, 16);
+
+    const c = document.createElementNS(SVGNS, "circle");
+    c.setAttribute("cx", NEWSITE.x.toFixed(1)); c.setAttribute("cy", NEWSITE.y.toFixed(1));
+    c.setAttribute("r", ringR.toFixed(1));
+    c.setAttribute("class", "reach");
+    $("#newreach").appendChild(c);
+
+    const m = document.createElementNS(SVGNS, "circle");
+    m.setAttribute("cx", NEWSITE.x.toFixed(1)); m.setAttribute("cy", NEWSITE.y.toFixed(1));
+    m.setAttribute("r", 11); m.setAttribute("class", "newschool");
+    $("#newschool").appendChild(m);
+  }
+  $("#newreach").style.opacity = 0;
+  $("#newschool").style.opacity = 0;
 }
 
-function paintStats(){
-  const t = BUNDLE.totals, c = BUNDLE.confidence, p = BUNDLE.params;
-  document.getElementById("s-children").textContent = fmt(t.children_est);
-  document.getElementById("s-under").textContent    = fmt(t.children_underserved_est);
-  document.getElementById("s-schools").textContent  = fmt(c.mapped);
-  document.getElementById("s-hex").textContent      = fmt(t.hexes);
-  document.getElementById("sub").textContent = `${BUNDLE.name}, ${BUNDLE.province} — walking access to school.`;
-  const where = document.getElementById("askwhere");
-  if (where) where.textContent = `Answering about ${BUNDLE.name}, ${BUNDLE.province}`;
-  document.getElementById("formulatext").textContent =
-    `${p.threshold_min} min × ${p.kmh} km/h ÷ ${p.detour} detour = ${Math.round(p.radius_m)} m`;
-  ring.setRadius(p.radius_m);
-
-  const pct = c.province_ratio != null ? Math.round(c.province_ratio*100) : null;
-  document.getElementById("conf").innerHTML =
-    `<b>Only ${fmt(c.mapped)} schools are mapped here.</b> ${pct != null
-      ? `Across ${BUNDLE.province}, open data holds about ${pct}% of the schools the official count reports.`
-      : ""} Distances are to the nearest <em>mapped</em> school, so these are places to
-      <strong>field-verify</strong> — not confirmed gaps.`;
-}
-
-/* ---------------- load ---------------- */
-// The first district is loaded while the landing page still covers the map, so Leaflet
-// has not measured its container yet and fitBounds lands at maximum zoom. Measuring
-// first is what makes the district actually appear.
-function fitDistrict(){
-  if (!BUNDLE) return;
-  map.invalidateSize();
-  const [w,s,e,n] = BUNDLE.bounds;
-  map.fitBounds([[s,w],[n,e]], { padding:[28,28] });
-}
-
-async function loadDistrict(code){
-  document.getElementById("loading").classList.remove("hide");
-  try{
-    // The build stamp from index.json busts the cache whenever the data is rebuilt.
-    // "force-cache" here was a real bug: it serves a previous build forever, so a
-    // rebuild was invisible to anyone who had already opened the page.
-    const v = (IDX && IDX.built) ? `?v=${IDX.built}` : "";
-    const res = await fetch(`districts/${code}.json${v}`, { cache:"default" });
-    if (!res.ok) throw new Error(`Could not load ${code} (${res.status}).`);
-    BUNDLE = await res.json();
-    window.BUNDLE = BUNDLE;
-    CELLS = BUNDLE.cells;
-    buildIndex();
-    paintChoropleth(); paintSchools(); paintLegend(); paintSites(); paintStats();
-    fitDistrict();
-  }catch(err){
-    document.getElementById("conf").innerHTML =
-      `<b>That district is not bundled.</b> The pipeline runs on any of Pakistan's 160 districts;
-       only the ones in the picker have been precomputed for this demo.`;
-  }finally{
-    document.getElementById("loading").classList.add("hide");
+/* -------------------------------------------------------- colour ---- */
+function colour(mode){
+  const dots = $("#dots").children;
+  for (let i = 0; i < dots.length; i++){
+    const c = CELLS[i], el = dots[i];
+    let cls = "dot plain";
+    if (mode === "split") cls = "dot " + (c.far ? "far" : "near");
+    if (mode === "after") cls = "dot " + ((c.far && !REACHED.has(i)) ? "far" : "near");
+    el.setAttribute("class", cls);
   }
 }
 
-(async function init(){
-  try{
-    const res = await fetch("districts/index.json", { cache:"no-cache" });
-    IDX = await res.json();
-  }catch(e){
-    document.getElementById("loading").innerHTML = "<span>Could not load the district list.</span>";
-    return;
+/* ------------------------------------------------------- counter ---- */
+let countTimer = null;
+function runCounter(to){
+  const el = $("#countnum");
+  if (REDUCED){ el.textContent = to.toLocaleString(); return; }
+  cancelAnimationFrame(countTimer);
+  const t0 = performance.now(), dur = 1500;
+  const tick = t => {
+    const k = Math.min(1, (t - t0) / dur);
+    const eased = 1 - Math.pow(1 - k, 3);
+    el.textContent = Math.round(to * eased).toLocaleString();
+    if (k < 1) countTimer = requestAnimationFrame(tick);
+  };
+  countTimer = requestAnimationFrame(tick);
+  // Browsers suspend requestAnimationFrame in a hidden tab, which would leave the
+  // headline number frozen at zero for anyone who opened this in a background tab.
+  clearTimeout(el._settle);
+  el._settle = setTimeout(() => { el.textContent = to.toLocaleString(); }, dur + 250);
+}
+
+/* --------------------------------------------------------- steps ---- */
+function show(n){
+  stage.dataset.step = n;
+  const district = $("#district"), reaches = $("#reaches");
+
+  $("#pathfig").style.opacity = n <= 1 ? 1 : 0;
+  district.classList.toggle("on", n >= 2);
+  reaches.classList.toggle("grown", n >= 3);
+  stage.classList.toggle("blurred", n === 5);
+  $("#sheet").classList.toggle("on", n === 5);
+  $("#counter").classList.toggle("on", n === 4 || n === 7);
+  $("#tooltip").classList.toggle("on", n === 6);
+  $("#newreach").style.opacity = n >= 7 ? 1 : 0;
+  $("#newschool").style.opacity = n >= 7 ? 1 : 0;
+  $("#countdelta").classList.toggle("on", n === 7);
+
+  if (n === 1 && !REDUCED) $("#walker").setAttribute("transform", "translate(820,250)");
+  if (n !== 1) $("#walker").setAttribute("transform", "translate(120,760)");
+
+  colour(n >= 7 ? "after" : n >= 3 ? "split" : "plain");
+
+  // Step 4 is the province; step 7 is this district. Taking 9,957 off 10.6 million is a
+  // change nobody can see, and implying one centre dents a province would be the wrong
+  // claim anyway. The label says which number is on screen.
+  if (n === 4){
+    $("#countlabel").textContent =
+      "children in Sindh beyond a 15-minute walk of a mapped school";
+    runCounter(SINDH_BEYOND);
   }
-  const pick = document.getElementById("pick");
-  pick.innerHTML = IDX.districts.map(d =>
-    `<option value="${d.code}">${d.name}, ${d.province} — ${d.mapped} mapped schools</option>`).join("");
-  pick.onchange = () => loadDistrict(pick.value);
-
-  // Open on a district with enough mapped schools to show an actual gradient. Landing
-  // on one with a single school would render a flat wall of "worst" and teach nobody
-  // anything on first sight - those districts are worth seeing, but second.
-  const best = IDX.districts.reduce((a, b) => (b.mapped > a.mapped ? b : a), IDX.districts[0]);
-  if (best){ pick.value = best.code; await loadDistrict(best.code); }
-})();
-
-document.getElementById("enter").onclick = () => {
-  document.getElementById("landing").classList.add("hide");
-  setTimeout(fitDistrict, 60);
-};
-
-/* ---------------- ask: the agent pipeline ---------------- */
-// Only this part needs the backend. Everything above — map, hover, choropleth,
-// shortlist — is static, so a sleeping free-tier service degrades one feature rather
-// than the demo.
-const LOCAL = ["127.0.0.1","localhost"].includes(location.hostname);
-const API_URL = LOCAL ? "http://127.0.0.1:7860" : "https://rasta-api-2019.onrender.com";
-
-const fab = document.getElementById("askfab");
-const win = document.getElementById("askwin");
-
-function openAsk(){
-  win.hidden = false;
-  fab.setAttribute("aria-expanded", "true");
-  document.getElementById("q").focus();
+  if (n === 7){
+    $("#countlabel").textContent =
+      "still beyond a 15-minute walk in Malir, after one new centre";
+    runCounter(DISTRICT_BEYOND - NEW_SITE_REACH);
+  }
 }
-function closeAsk(){
-  win.hidden = true;
-  fab.setAttribute("aria-expanded", "false");
-  fab.focus();
-}
-fab.onclick = openAsk;
-document.getElementById("askclose").onclick = closeAsk;
-document.addEventListener("keydown", e => { if (e.key === "Escape" && !win.hidden) closeAsk(); });
 
-const EXAMPLES = [
-  "Where should we open learning centres?",
-  "How many girls are beyond a 30 minute walk?",
-  "Compare these districts",
-];
-const chipsEl = document.getElementById("chips");
-chipsEl.innerHTML = EXAMPLES.map(e => `<button type="button" class="chip">${e}</button>`).join("");
-chipsEl.querySelectorAll(".chip").forEach(c => c.onclick = () => {
-  document.getElementById("q").value = c.textContent;
-  document.getElementById("askform").requestSubmit();
+build().then(() => {
+  const steps = [...document.querySelectorAll(".step")];
+  if (!("IntersectionObserver" in window)){ show(7); return; }
+
+  const io = new IntersectionObserver(entries => {
+    // The step nearest the middle of the viewport wins, so a tall card cannot
+    // leave two steps fighting over the visual.
+    let best = null, bestD = Infinity;
+    for (const e of entries.length ? steps : steps){
+      const r = e.getBoundingClientRect();
+      const d = Math.abs((r.top + r.height / 2) - innerHeight / 2);
+      if (r.bottom > 0 && r.top < innerHeight && d < bestD){ bestD = d; best = e; }
+    }
+    if (best) show(+best.dataset.step);
+  }, { rootMargin:"-45% 0px -45% 0px", threshold:0 });
+
+  steps.forEach(s => io.observe(s));
+  show(1);
 });
-
-let asking = false;
-document.getElementById("askform").onsubmit = async (ev) => {
-  ev.preventDefault();
-  const q = document.getElementById("q").value.trim();
-  if (!q || asking) return;
-
-  const send = document.getElementById("asksend");
-  const box = document.getElementById("answer");
-  const text = document.getElementById("answertext");
-  asking = true; send.disabled = true;
-  box.hidden = false;
-  text.textContent = "Thinking…";
-  document.getElementById("verdict").innerHTML = "";
-  document.getElementById("trace").innerHTML = "";
-
-  // The backend sleeps after 15 minutes and takes most of a minute to wake. Say so,
-  // but only once it is actually slow, so a warm server never shows the message.
-  const slow = setTimeout(() => { text.textContent = "Waking the analysis server — this can take up to a minute…"; }, 1800);
-
-  try{
-    const res = await fetch(API_URL + "/ask", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ question:q, district: BUNDLE ? BUNDLE.code : null }),
-      signal: AbortSignal.timeout(90000),
-    });
-    clearTimeout(slow);
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.detail || `The server returned ${res.status}.`);
-
-    text.textContent = data.answer || "No answer.";
-
-    if (data.verified != null){
-      document.getElementById("verdict").innerHTML = data.verified
-        ? `<span class="pill ok">verified</span><span>every number traced back to the analysis</span>`
-        : `<span class="pill no">overruled</span><span>the model's wording was discarded; this is the computed text</span>`;
-    }
-    document.getElementById("trace").innerHTML = (data.trace || []).map(s =>
-      `<li><b>${s.agent}</b><span class="kind ${s.kind}">${s.kind}</span><br>${s.decided}</li>`).join("");
-  }catch(err){
-    clearTimeout(slow);
-    text.textContent = (err.name === "TimeoutError" || /timed out/i.test(err.message))
-      ? "The analysis server took too long — it may be waking up. Try again in a moment."
-      : `${err.message} The map and the shortlist above do not need the server, so they still work.`;
-  }finally{
-    asking = false; send.disabled = false;
-  }
-};
 </script>
 </body>
 </html>

@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rasta — explore a district</title>
+<meta name="description" content="Rasta helps NGOs in Pakistan find where children live beyond a 15-minute walk of a school, and which sites to field-verify first.">
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#f7f6f3; --panel:#ffffff; --ink:#15211c; --muted:#5d6b64; --line:#e2e0da;
+  --accent:#0f766e; --accent-soft:#d6ece8;
+  --b0:#0f766e; --b1:#5aa88f; --b2:#e0b252; --b3:#dd8243; --b4:#c4453b;
+  --warn:#b45309; --warn-bg:#fdf4e3;
+  --shadow:0 1px 2px rgba(16,32,27,.06),0 8px 28px rgba(16,32,27,.08);
+  --r:14px;
+}
+:root[data-theme="dark"]{
+  --bg:#0d1412; --panel:#141d1a; --ink:#e8efec; --muted:#93a39c; --line:#243330;
+  --accent:#4fd1c5; --accent-soft:#12302c;
+  --b0:#2dd4bf; --b1:#5aa88f; --b2:#e0b252; --b3:#e08a4d; --b4:#e4584c;
+  --warn:#fbbf24; --warn-bg:#2a2112;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.45);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d1412; --panel:#141d1a; --ink:#e8efec; --muted:#93a39c; --line:#243330;
+    --accent:#4fd1c5; --accent-soft:#12302c;
+    --b0:#2dd4bf; --b1:#5aa88f; --b2:#e0b252; --b3:#e08a4d; --b4:#e4584c;
+    --warn:#fbbf24; --warn-bg:#2a2112;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.45);
+  }
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font:15px/1.55 "IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased; overflow:hidden;
+}
+h1,h2,h3{font-family:Fraunces,Georgia,serif; font-weight:600; letter-spacing:-.01em; margin:0}
+button{font:inherit; color:inherit; cursor:pointer}
+
+/* ---------- shell ---------- */
+#app{display:grid; grid-template-columns:400px 1fr; height:100vh}
+#map{height:100vh; width:100%; background:var(--bg)}
+.leaflet-container{font:inherit; background:var(--bg)}
+.basemap{transition:opacity .35s ease}
+
+/* ---------- panel ---------- */
+#panel{
+  background:var(--panel); border-right:1px solid var(--line);
+  display:flex; flex-direction:column; overflow:hidden; z-index:600;
+}
+#head{padding:20px 22px 14px; border-bottom:1px solid var(--line)}
+.brandrow{display:flex; align-items:baseline; justify-content:space-between; gap:10px}
+#brand{font-size:27px; line-height:1}
+#brand em{font-style:normal; color:var(--accent)}
+.tag{font-size:11.5px; color:var(--muted); letter-spacing:.08em; text-transform:uppercase}
+#sub{color:var(--muted); font-size:13.5px; margin-top:7px}
+#scroll{overflow-y:auto; padding:18px 22px 26px; flex:1; scrollbar-width:thin}
+
+.section{margin-bottom:22px}
+.label{font-size:11px; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); margin-bottom:9px; font-weight:600}
+
+select{
+  width:100%; padding:11px 13px; border-radius:10px; border:1px solid var(--line);
+  background:var(--bg); color:var(--ink); font:inherit; cursor:pointer;
+}
+select:focus{outline:2px solid var(--accent); outline-offset:1px}
+
+/* ---------- readout ---------- */
+#readout{
+  border:1px solid var(--line); border-radius:var(--r); padding:15px 16px;
+  background:linear-gradient(180deg,var(--accent-soft),transparent 70%);
+}
+#readout .hint{color:var(--muted); font-size:13px}
+.big{font-family:Fraunces,Georgia,serif; font-size:31px; line-height:1.08; font-weight:600}
+.big small{font-size:14px; font-family:"IBM Plex Sans",sans-serif; color:var(--muted); font-weight:400}
+.rowstat{display:flex; justify-content:space-between; gap:12px; padding:5px 0; font-size:13.5px; border-top:1px dashed var(--line)}
+.rowstat:first-of-type{border-top:0}
+.rowstat b{font-variant-numeric:tabular-nums; font-weight:600}
+.k{color:var(--muted)}
+
+/* ---------- stats ---------- */
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.stat{border:1px solid var(--line); border-radius:12px; padding:12px 13px; background:var(--bg)}
+.stat .n{font-family:Fraunces,Georgia,serif; font-size:22px; font-weight:600; font-variant-numeric:tabular-nums}
+.stat .t{font-size:11.5px; color:var(--muted); margin-top:3px; line-height:1.35}
+
+/* ---------- banner ---------- */
+.banner{
+  border:1px solid color-mix(in srgb,var(--warn) 35%,transparent); background:var(--warn-bg);
+  border-radius:12px; padding:12px 14px; font-size:12.8px; line-height:1.5;
+}
+.banner b{color:var(--warn)}
+
+/* ---------- legend / formula ---------- */
+.legrow{display:flex; align-items:center; gap:9px; font-size:13px; padding:3px 0}
+.sw{width:15px; height:15px; border-radius:4px; flex:none}
+#formula{
+  margin-top:10px; font-size:12.4px; color:var(--muted); border:1px dashed var(--line);
+  border-radius:10px; padding:10px 12px; background:var(--bg);
+}
+#formula code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--ink); font-size:12px}
+
+/* ---------- shortlist ---------- */
+.site{
+  display:grid; grid-template-columns:26px 1fr auto; gap:11px; align-items:center;
+  width:100%; text-align:left; padding:10px 11px; border:1px solid var(--line);
+  border-radius:11px; background:var(--bg); margin-bottom:7px; transition:.15s;
+}
+.site:hover{border-color:var(--accent); transform:translateX(2px)}
+.rank{
+  width:26px; height:26px; border-radius:8px; background:var(--accent); color:#fff;
+  display:grid; place-items:center; font-size:12.5px; font-weight:600;
+}
+:root[data-theme="dark"] .rank{color:#06201c}
+.site .m{font-size:12px; color:var(--muted)}
+.site .c{font-weight:600; font-variant-numeric:tabular-nums; font-size:14px}
+
+/* ---------- ask: floating window over the map ---------- */
+/* The window stays shut until it is asked for. The button is what has to carry the
+   message that there is an AI behind this map, so it glows gently rather than sitting
+   there as another grey control. */
+#askfab{
+  position:absolute; right:18px; bottom:22px; z-index:1150;
+  display:flex; align-items:center; gap:8px;
+  background:var(--accent); color:#fff; border:0; border-radius:999px;
+  padding:12px 16px 12px 14px; font-weight:600; font-size:14.5px;
+  transition:transform .18s, box-shadow .18s;
+  animation:glow 2.8s ease-in-out infinite;
+}
+:root[data-theme="dark"] #askfab{color:#06201c}
+#askfab:hover{
+  transform:translateY(-2px); animation:none;
+  box-shadow:0 0 0 7px color-mix(in srgb,var(--accent) 22%,transparent),
+             0 10px 26px rgba(0,0,0,.26);
+}
+#askfab:focus-visible{outline:2px solid var(--ink); outline-offset:3px}
+
+/* A halo that breathes outward — reads as "live" without flashing at anyone. */
+@keyframes glow{
+  0%,100%{ box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 42%,transparent),
+                      0 6px 18px rgba(0,0,0,.2); }
+  50%    { box-shadow:0 0 0 11px color-mix(in srgb,var(--accent) 0%,transparent),
+                      0 6px 18px rgba(0,0,0,.2); }
+}
+#askfab .spark{
+  width:17px; height:17px; fill:currentColor; flex:none;
+  animation:twinkle 2.8s ease-in-out infinite;
+}
+@keyframes twinkle{0%,100%{opacity:.75; transform:scale(.92)}50%{opacity:1; transform:scale(1.06)}}
+#askfab .ai{
+  font-size:9.5px; letter-spacing:.09em; font-weight:700; padding:2px 6px;
+  border-radius:999px; background:rgba(255,255,255,.22); line-height:1.4;
+}
+:root[data-theme="dark"] #askfab .ai{background:rgba(0,0,0,.18)}
+#askfab[aria-expanded="true"]{opacity:0; pointer-events:none; animation:none}
+
+/* Someone who has asked for less motion gets a static button, not a pulsing one. */
+@media (prefers-reduced-motion:reduce){
+  #askfab, #askfab .spark{animation:none}
+  #askfab{box-shadow:0 0 0 5px color-mix(in srgb,var(--accent) 20%,transparent),
+                     0 6px 18px rgba(0,0,0,.2)}
+}
+
+#askwin{
+  position:absolute; right:18px; bottom:22px; z-index:1160; width:372px;
+  max-width:calc(100% - 36px); max-height:min(76vh,620px);
+  display:flex; flex-direction:column;
+  background:var(--panel); border:1px solid var(--line); border-radius:16px;
+  box-shadow:0 4px 14px rgba(0,0,0,.18),0 24px 60px rgba(0,0,0,.26);
+  animation:rise .18s ease-out;
+}
+/* Required. The browser hides [hidden] with display:none from its own stylesheet, but
+   the id selector above outranks it, so without this the window never actually closes -
+   the attribute flips and nothing moves. */
+#askwin[hidden]{display:none}
+@keyframes rise{from{opacity:0; transform:translateY(10px)}to{opacity:1; transform:none}}
+#askwin header{
+  display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+  padding:14px 16px 11px; border-bottom:1px solid var(--line);
+}
+#askwin h2{font-size:17px; margin:0}
+#askwhere{margin:3px 0 0; font-size:12px; color:var(--muted)}
+#askclose{
+  background:transparent; border:0; font-size:22px; line-height:1; color:var(--muted);
+  width:34px; height:34px; display:grid; place-items:center;   /* a real hit target */
+  border-radius:9px; flex:none; margin:-4px -6px 0 0;
+}
+#askclose:hover{color:var(--ink); background:var(--bg)}
+#askclose:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+#askbody{padding:14px 16px; overflow-y:auto; flex:1; scrollbar-width:thin}
+#askform{display:flex; gap:7px; padding:11px 14px 14px; border-top:1px solid var(--line)}
+#q{
+  flex:1; min-width:0; padding:10px 12px; border-radius:10px; border:1px solid var(--line);
+  background:var(--bg); color:var(--ink); font:inherit; font-size:14px;
+}
+#q:focus{outline:2px solid var(--accent); outline-offset:1px}
+#asksend{padding:10px 15px; font-size:14px; border-radius:10px; flex:none}
+#asksend[disabled]{opacity:.55}
+#chips{display:flex; flex-wrap:wrap; gap:6px}
+.chip{
+  background:var(--bg); border:1px solid var(--line); border-radius:999px;
+  padding:5px 11px; font-size:12px; color:var(--muted); transition:.15s;
+}
+.chip:hover{border-color:var(--accent); color:var(--ink)}
+#answer{margin-top:13px; border:1px solid var(--line); border-radius:var(--r); padding:14px 15px; background:var(--bg)}
+#answertext{margin:0; font-size:14px; line-height:1.6}
+#verdict{margin-top:10px; font-size:11.5px; display:flex; align-items:center; gap:7px}
+.pill{border-radius:999px; padding:3px 9px; font-weight:600; font-size:11px}
+.pill.ok{background:var(--accent-soft); color:var(--accent)}
+.pill.no{background:var(--warn-bg); color:var(--warn)}
+#tracebox{margin-top:11px; font-size:12px}
+#tracebox summary{cursor:pointer; color:var(--muted); user-select:none}
+#tracebox summary:hover{color:var(--ink)}
+#trace{margin:10px 0 0; padding-left:19px; line-height:1.55}
+#trace li{margin-bottom:6px; color:var(--muted)}
+#trace b{color:var(--ink); font-weight:600}
+#trace .kind{
+  font-size:9.5px; letter-spacing:.07em; text-transform:uppercase; padding:1px 5px;
+  border-radius:4px; border:1px solid var(--line); margin-left:5px;
+}
+#trace .llm{color:var(--b2); border-color:var(--b2)}
+#trace .code{color:var(--accent); border-color:var(--accent)}
+
+.backlink{margin:9px 0 0; font-size:12.5px}
+.backlink a{color:var(--accent); text-decoration:none}
+.backlink a:hover{text-decoration:underline}
+
+/* ---------- misc ---------- */
+#themebtn{
+  background:transparent; border:1px solid var(--line); border-radius:9px;
+  width:32px; height:32px; display:grid; place-items:center; flex:none;
+}
+#tip{
+  position:absolute; z-index:1200; pointer-events:none; background:var(--panel);
+  border:1px solid var(--line); border-radius:9px; padding:6px 9px; font-size:12px;
+  box-shadow:var(--shadow); opacity:0; transition:opacity .12s;
+}
+#loading{
+  position:absolute; inset:0; display:grid; place-items:center; z-index:900;
+  background:color-mix(in srgb,var(--bg) 82%,transparent); font-size:14px; color:var(--muted);
+}
+#loading.hide{display:none}
+.spin{
+  width:17px;height:17px;border:2px solid var(--line);border-top-color:var(--accent);
+  border-radius:50%;animation:sp .7s linear infinite; display:inline-block; vertical-align:-3px; margin-right:8px;
+}
+@keyframes sp{to{transform:rotate(360deg)}}
+.foot{font-size:11.5px; color:var(--muted); line-height:1.6; border-top:1px solid var(--line); padding-top:14px}
+.foot a{color:inherit}
+
+@media (max-width:900px){
+  body{overflow:auto}
+  #app{grid-template-columns:1fr; height:auto}
+  #panel{height:auto; max-height:none; border-right:0; border-bottom:1px solid var(--line)}
+  #scroll{overflow:visible}
+  #map{height:62vh; position:sticky; top:0}
+  .facts{grid-template-columns:1fr}
+
+  /* On a phone the floating window becomes a bottom sheet across the full width —
+     a 372px card pinned to a corner is unusable at this size. */
+  #askfab{right:12px; bottom:14px; padding:11px 17px 11px 15px; font-size:14px}
+  #askwin{
+    right:8px; left:8px; bottom:8px; width:auto; max-width:none;
+    max-height:min(80vh,560px); border-radius:14px;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- ======================= APP ======================= -->
+<div id="app">
+  <aside id="panel">
+    <div id="head">
+      <div class="brandrow">
+        <h1 id="brand">Ras<em>ta</em></h1>
+        <button id="themebtn" title="Switch theme" aria-label="Switch theme">◐</button>
+      </div>
+      <p id="sub">Walking access to school, district by district.</p>
+      <p class="backlink"><a href="index.html">&larr; Back to the story</a></p>
+    </div>
+
+    <div id="scroll">
+      <div class="section">
+        <div class="label">District</div>
+        <select id="pick" aria-label="Choose a district"></select>
+      </div>
+
+      <div class="section">
+        <div class="label">Put a centre here</div>
+        <div id="readout">
+          <p class="hint" id="hint">Move the cursor over the map. The circle is one 15-minute walk.</p>
+          <div id="live" style="display:none">
+            <div class="big"><span id="reach">—</span> <small>children reached</small></div>
+            <div style="margin-top:11px">
+              <div class="rowstat"><span class="k">Walk to nearest school</span><b id="walkmin">—</b></div>
+              <div class="rowstat"><span class="k">People in this cell</span><b id="cellpop">—</b></div>
+              <div class="rowstat"><span class="k">Relative wealth</span><b id="cellrwi">—</b></div>
+            </div>
+          </div>
+        </div>
+        <div id="formula">
+          A catchment here is a circle because the model is closed-form:<br>
+          <code id="formulatext">15 min × 4 km/h ÷ 1.3 detour = 769 m</code>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="label">District totals</div>
+        <div class="grid2">
+          <div class="stat"><div class="n" id="s-children">—</div><div class="t">school-age children (estimated)</div></div>
+          <div class="stat"><div class="n" id="s-under">—</div><div class="t">beyond a 15-minute walk</div></div>
+          <div class="stat"><div class="n" id="s-schools">—</div><div class="t">schools in open data</div></div>
+          <div class="stat"><div class="n" id="s-hex">—</div><div class="t">population cells analysed</div></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="banner" id="conf">—</div>
+      </div>
+
+      <div class="section">
+        <div class="label">Sites to field-verify</div>
+        <div id="sites"></div>
+      </div>
+
+      <div class="section">
+        <div class="label">Walk to nearest mapped school</div>
+        <div id="legend"></div>
+      </div>
+
+      <p class="foot">
+        Distances are straight-line estimates inflated by a detour factor, not routed along roads.
+        Child counts apply a national age share to gridded population, so they are estimates.<br><br>
+        UNICEF Giga (ODbL) · Kontur (CC-BY) · Meta RWI (CC-BY-NC) · OCHA COD (CC-BY-IGO) ·
+        basemap © Esri · <a href="https://github.com/arahmanmdmajid/rasta-school-access">source</a>
+      </p>
+    </div>
+  </aside>
+
+  <div style="position:relative">
+    <div id="map"></div>
+    <div id="loading"><span><span class="spin"></span>Loading district…</span></div>
+    <div id="tip"></div>
+
+    <!-- The agent pipeline floats over the map rather than competing with the shortlist
+         for panel space: you are asking about the thing you are looking at. -->
+    <button id="askfab" aria-expanded="false" aria-controls="askwin">
+      <svg class="spark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M12 2.6l1.9 5.3 5.3 1.9-5.3 1.9L12 17l-1.9-5.3L4.8 9.8l5.3-1.9z"/>
+        <path d="M18.6 14.6l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" opacity=".75"/>
+      </svg>
+      <span>Ask the map</span>
+      <span class="ai">AI</span>
+    </button>
+
+    <section id="askwin" hidden aria-labelledby="asktitle">
+      <header>
+        <div>
+          <h2 id="asktitle">Ask the map</h2>
+          <p id="askwhere">—</p>
+        </div>
+        <button id="askclose" type="button" aria-label="Close">&times;</button>
+      </header>
+
+      <div id="askbody">
+        <div id="chips"></div>
+        <div id="answer" hidden>
+          <p id="answertext"></p>
+          <div id="verdict"></div>
+          <details id="tracebox">
+            <summary>How this answer was produced</summary>
+            <ol id="trace"></ol>
+          </details>
+        </div>
+      </div>
+
+      <form id="askform">
+        <input id="q" type="text" autocomplete="off"
+               placeholder="Where should we open learning centres?" aria-label="Ask a question">
+        <button class="btn" id="asksend" type="submit">Ask</button>
+      </form>
+    </section>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// Rasta — static page. Every district is a precomputed bundle, so the map, the hover
+// catchment and the shortlist need no server at all: nothing here can be broken by a
+// sleeping backend.
+
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmt = n => n == null || !isFinite(n) ? "—" : Math.round(n).toLocaleString();
+const isDark = () => (document.documentElement.dataset.theme || "")
+  ? document.documentElement.dataset.theme === "dark"
+  : matchMedia("(prefers-color-scheme: dark)").matches;
+
+/* ---------------- theme ---------------- */
+function setTheme(t){
+  document.documentElement.dataset.theme = t;
+  try{ localStorage.setItem("rasta-theme", t); }catch(e){}
+  if (window.basemaps){
+    basemaps.light.setOpacity(t === "dark" ? 0 : 1);
+    basemaps.dark.setOpacity(t === "dark" ? 1 : 0);
+  }
+  if (window.BUNDLE) { paintChoropleth(); paintLegend(); }
+}
+let saved = null;
+try{ saved = localStorage.getItem("rasta-theme"); }catch(e){}
+setTheme(saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+const toggle = () => setTheme(isDark() ? "light" : "dark");
+document.getElementById("themebtn").onclick = toggle;
+
+/* ---------------- map ---------------- */
+const TILES = {
+  light:"https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+  dark :"https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+};
+const map = L.map("map", { zoomControl:true, preferCanvas:false }).setView([25.6, 68.5], 7);
+const opt = { attribution:"Tiles &copy; Esri &middot; Schools &copy; UNICEF Giga / OpenStreetMap contributors (ODbL)", maxNativeZoom:16, maxZoom:18, opacity:0, className:"basemap" };
+const basemaps = {
+  light: L.tileLayer(TILES.light, opt).addTo(map),
+  dark : L.tileLayer(TILES.dark , opt).addTo(map),
+};
+window.basemaps = basemaps;
+basemaps.light.setOpacity(isDark() ? 0 : 1);
+basemaps.dark.setOpacity(isDark() ? 1 : 0);
+
+const choro  = L.layerGroup().addTo(map);
+const schoolLayer = L.layerGroup().addTo(map);
+const marks  = L.layerGroup().addTo(map);
+
+// The catchment circle is created once and only moved. Rebuilding it per frame is what
+// makes this kind of hover feel sticky.
+const ring = L.circle([0,0], { radius:769, interactive:false, color:css("--accent"), weight:2, fillColor:css("--accent"), fillOpacity:.1 });
+
+/* ---------------- state ---------------- */
+let BUNDLE = null, IDX = null;
+let CELLS = null;          // parallel arrays, straight from the bundle
+let XY = null;             // cell centres in local metres
+let BUCKETS = null;        // integer-keyed spatial index
+const BUCKET_M = 1000;
+let kx = 1, ky = 110540, lat0 = 25;
+
+const bandColors = () => [css("--b0"),css("--b1"),css("--b2"),css("--b3"),css("--b4")];
+
+/* ---------------- spatial index ---------------- */
+function buildIndex(){
+  const n = CELLS.lon.length;
+  lat0 = CELLS.lat.reduce((a,b)=>a+b,0)/n;
+  kx = 111320 * Math.cos(lat0*Math.PI/180);
+  ky = 110540;
+  XY = { x:new Float64Array(n), y:new Float64Array(n) };
+  BUCKETS = new Map();
+  for (let i=0;i<n;i++){
+    const x = CELLS.lon[i]*kx, y = CELLS.lat[i]*ky;
+    XY.x[i] = x; XY.y[i] = y;
+    const k = (Math.floor(x/BUCKET_M)*100000) + Math.floor(y/BUCKET_M);
+    let arr = BUCKETS.get(k);
+    if (!arr) BUCKETS.set(k, arr = []);
+    arr.push(i);
+  }
+}
+function candidates(x, y, rings){
+  const bx = Math.floor(x/BUCKET_M), by = Math.floor(y/BUCKET_M), out = [];
+  for (let dx=-rings; dx<=rings; dx++)
+    for (let dy=-rings; dy<=rings; dy++){
+      const arr = BUCKETS.get(((bx+dx)*100000) + (by+dy));
+      if (arr) out.push(...arr);
+    }
+  return out;
+}
+// For a regular hex tiling the containing hexagon is the one whose centre is nearest,
+// so this is exact, not an approximation — and needs no point-in-polygon test.
+function nearestCell(x, y){
+  let best = -1, bestD = Infinity;
+  for (const i of candidates(x, y, 1)){
+    const d = (XY.x[i]-x)**2 + (XY.y[i]-y)**2;
+    if (d < bestD){ bestD = d; best = i; }
+  }
+  return best;
+}
+function childrenReached(x, y){
+  const r = BUNDLE.params.radius_m, r2 = r*r, thr = BUNDLE.params.threshold_min;
+  let sum = 0;
+  for (const i of candidates(x, y, Math.ceil(r/BUCKET_M)+1)){
+    if (CELLS.min[i] <= thr) continue;          // already within a 15-minute walk
+    if ((XY.x[i]-x)**2 + (XY.y[i]-y)**2 <= r2) sum += CELLS.ch[i];
+  }
+  return sum;
+}
+
+/* ---------------- hover ---------------- */
+let pending = null, raf = 0;
+map.on("mousemove", e => { pending = e.latlng; if (!raf) raf = requestAnimationFrame(flush); });
+map.on("mouseout", () => { document.getElementById("live").style.display="none"; document.getElementById("hint").style.display=""; });
+map.on("click", e => { pending = e.latlng; flush(); });   // touch and keyboard users
+
+function flush(){
+  raf = 0;
+  if (!pending || !CELLS) return;
+  const ll = pending;
+  ring.setLatLng(ll);
+  if (!map.hasLayer(ring)) ring.addTo(map);
+
+  const x = ll.lng*kx, y = ll.lat*ky;
+  const i = nearestCell(x, y);
+  const reached = childrenReached(x, y);
+
+  document.getElementById("hint").style.display = "none";
+  document.getElementById("live").style.display = "";
+  document.getElementById("reach").textContent  = fmt(reached);
+  const noSupply = BUNDLE.params.no_supply_min || 999;
+  document.getElementById("walkmin").textContent =
+    i < 0 ? "—"
+    : CELLS.min[i] >= noSupply ? "no mapped school"
+    : CELLS.min[i].toFixed(0) + " min";
+  document.getElementById("cellpop").textContent = i < 0 ? "—" : fmt(CELLS.pop[i]);
+  const rwi = i < 0 ? null : CELLS.rwi[i];
+  document.getElementById("cellrwi").textContent = rwi == null ? "—"
+    : (rwi < -0.4 ? "poorer" : rwi > 0.2 ? "better off" : "mid") + " (" + rwi.toFixed(2) + ")";
+}
+
+/* ---------------- render ---------------- */
+// Hexagons are rebuilt here rather than shipped as polygons. The bundle carries one
+// shared set of six vertex offsets in metres, which reproduces every Kontur cell to
+// within about 4 m, so twelve numbers stand in for roughly a megabyte of coordinates.
+//
+// All the cells of one class go into a SINGLE L.polygon as a list of rings, which
+// Leaflet draws as one SVG path with many subpaths. Five paths total, whatever the
+// district: thousands of individual polygons would make panning sticky.
+function paintChoropleth(){
+  choro.clearLayers();
+  const cols = bandColors();
+  const offs = BUNDLE.hex_offsets_m;
+  const n = CELLS.lon.length;
+  if (!offs || !offs.length) return;
+
+  const byClass = [[], [], [], [], []];
+  for (let i = 0; i < n; i++){
+    const lon = CELLS.lon[i], lat = CELLS.lat[i];
+    const ring = offs.map(([dx, dy]) => [lat + dy / ky, lon + dx / kx]);
+    byClass[Math.min(CELLS.cls[i], 4)].push(ring);
+  }
+  byClass.forEach((rings, c) => {
+    if (!rings.length) return;
+    // Translucent on purpose: the basemap underneath is how an officer recognises the
+    // place they are looking at.
+    L.polygon(rings, {
+      stroke:false, fillColor:cols[c], fillOpacity: isDark() ? .5 : .42, interactive:false,
+    }).addTo(choro);
+  });
+}
+function paintSchools(){
+  schoolLayer.clearLayers();
+  L.geoJSON(BUNDLE.schools, {
+    // interactive:false matters: interactive markers swallow mousemove and punch dead
+    // spots in the hover readout.
+    pointToLayer: (f, ll) => L.circleMarker(ll, {
+      radius:3.5, color:"#fff", weight:1, fillColor:css("--ink"), fillOpacity:.85, interactive:false,
+    }),
+  }).addTo(schoolLayer);
+}
+function paintLegend(){
+  const cols = bandColors(), b = BUNDLE.params.bands_min;
+  const labels = [`under ${b[0]} min`, `${b[0]}–${b[1]} min`, `${b[1]}–${b[2]} min`, `${b[2]}–${b[3]} min`, `over ${b[3]} min`];
+  document.getElementById("legend").innerHTML = labels.map((t,i) =>
+    `<div class="legrow"><span class="sw" style="background:${cols[i]}"></span>${t}</div>`).join("")
+    + `<div class="legrow" style="margin-top:6px"><span class="sw" style="background:var(--ink);border-radius:50%;width:9px;height:9px;margin-left:3px"></span>mapped school</div>`;
+}
+function paintSites(){
+  const el = document.getElementById("sites");
+  if (!BUNDLE.shortlist.length){ el.innerHTML = `<p class="hint">No underserved cells in this district.</p>`; return; }
+  el.innerHTML = BUNDLE.shortlist.map((s,i) =>
+    `<button class="site" data-i="${i}">
+       <span class="rank">${i+1}</span>
+       <span><span class="c">${fmt(s.children_reached)}</span> children<br>
+         <span class="m">${s.walk_min_to_nearest.toFixed(0)} min to nearest mapped school</span></span>
+       <span class="m">▸</span>
+     </button>`).join("");
+  marks.clearLayers();
+  BUNDLE.shortlist.forEach((s,i) => {
+    L.marker([s.lat, s.lon], { icon: L.divIcon({
+      className:"", iconSize:[22,22],
+      html:`<div style="width:22px;height:22px;border-radius:7px;background:${css("--accent")};color:${isDark()?"#06201c":"#fff"};display:grid;place-items:center;font:600 12px 'IBM Plex Sans',sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.3)">${i+1}</div>`,
+    })}).addTo(marks);
+  });
+  el.querySelectorAll(".site").forEach(b => b.onclick = () => {
+    const s = BUNDLE.shortlist[+b.dataset.i];
+    map.flyTo([s.lat, s.lon], 14, { duration:.7 });
+  });
+}
+
+function paintStats(){
+  const t = BUNDLE.totals, c = BUNDLE.confidence, p = BUNDLE.params;
+  document.getElementById("s-children").textContent = fmt(t.children_est);
+  document.getElementById("s-under").textContent    = fmt(t.children_underserved_est);
+  document.getElementById("s-schools").textContent  = fmt(c.mapped);
+  document.getElementById("s-hex").textContent      = fmt(t.hexes);
+  document.getElementById("sub").textContent = `${BUNDLE.name}, ${BUNDLE.province} — walking access to school.`;
+  const where = document.getElementById("askwhere");
+  if (where) where.textContent = `Answering about ${BUNDLE.name}, ${BUNDLE.province}`;
+  document.getElementById("formulatext").textContent =
+    `${p.threshold_min} min × ${p.kmh} km/h ÷ ${p.detour} detour = ${Math.round(p.radius_m)} m`;
+  ring.setRadius(p.radius_m);
+
+  const pct = c.province_ratio != null ? Math.round(c.province_ratio*100) : null;
+  document.getElementById("conf").innerHTML =
+    `<b>Only ${fmt(c.mapped)} schools are mapped here.</b> ${pct != null
+      ? `Across ${BUNDLE.province}, open data holds about ${pct}% of the schools the official count reports.`
+      : ""} Distances are to the nearest <em>mapped</em> school, so these are places to
+      <strong>field-verify</strong> — not confirmed gaps.`;
+}
+
+/* ---------------- load ---------------- */
+// The first district is loaded while the landing page still covers the map, so Leaflet
+// has not measured its container yet and fitBounds lands at maximum zoom. Measuring
+// first is what makes the district actually appear.
+function fitDistrict(){
+  if (!BUNDLE) return;
+  map.invalidateSize();
+  const [w,s,e,n] = BUNDLE.bounds;
+  map.fitBounds([[s,w],[n,e]], { padding:[28,28] });
+}
+
+async function loadDistrict(code){
+  document.getElementById("loading").classList.remove("hide");
+  try{
+    // The build stamp from index.json busts the cache whenever the data is rebuilt.
+    // "force-cache" here was a real bug: it serves a previous build forever, so a
+    // rebuild was invisible to anyone who had already opened the page.
+    const v = (IDX && IDX.built) ? `?v=${IDX.built}` : "";
+    const res = await fetch(`districts/${code}.json${v}`, { cache:"default" });
+    if (!res.ok) throw new Error(`Could not load ${code} (${res.status}).`);
+    BUNDLE = await res.json();
+    window.BUNDLE = BUNDLE;
+    CELLS = BUNDLE.cells;
+    buildIndex();
+    paintChoropleth(); paintSchools(); paintLegend(); paintSites(); paintStats();
+    fitDistrict();
+  }catch(err){
+    document.getElementById("conf").innerHTML =
+      `<b>That district is not bundled.</b> The pipeline runs on any of Pakistan's 160 districts;
+       only the ones in the picker have been precomputed for this demo.`;
+  }finally{
+    document.getElementById("loading").classList.add("hide");
+  }
+}
+
+(async function init(){
+  try{
+    const res = await fetch("districts/index.json", { cache:"no-cache" });
+    IDX = await res.json();
+  }catch(e){
+    document.getElementById("loading").innerHTML = "<span>Could not load the district list.</span>";
+    return;
+  }
+  const pick = document.getElementById("pick");
+  pick.innerHTML = IDX.districts.map(d =>
+    `<option value="${d.code}">${d.name}, ${d.province} — ${d.mapped} mapped schools</option>`).join("");
+  pick.onchange = () => loadDistrict(pick.value);
+
+  // Open on a district with enough mapped schools to show an actual gradient. Landing
+  // on one with a single school would render a flat wall of "worst" and teach nobody
+  // anything on first sight - those districts are worth seeing, but second.
+  const best = IDX.districts.reduce((a, b) => (b.mapped > a.mapped ? b : a), IDX.districts[0]);
+  if (best){ pick.value = best.code; await loadDistrict(best.code); }
+})();
+
+/* ---------------- ask: the agent pipeline ---------------- */
+// Only this part needs the backend. Everything above — map, hover, choropleth,
+// shortlist — is static, so a sleeping free-tier service degrades one feature rather
+// than the demo.
+const LOCAL = ["127.0.0.1","localhost"].includes(location.hostname);
+const API_URL = LOCAL ? "http://127.0.0.1:7860" : "https://rasta-api-2019.onrender.com";
+
+const fab = document.getElementById("askfab");
+const win = document.getElementById("askwin");
+
+function openAsk(){
+  win.hidden = false;
+  fab.setAttribute("aria-expanded", "true");
+  document.getElementById("q").focus();
+}
+function closeAsk(){
+  win.hidden = true;
+  fab.setAttribute("aria-expanded", "false");
+  fab.focus();
+}
+fab.onclick = openAsk;
+document.getElementById("askclose").onclick = closeAsk;
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !win.hidden) closeAsk(); });
+
+const EXAMPLES = [
+  "Where should we open learning centres?",
+  "How many girls are beyond a 30 minute walk?",
+  "Compare these districts",
+];
+const chipsEl = document.getElementById("chips");
+chipsEl.innerHTML = EXAMPLES.map(e => `<button type="button" class="chip">${e}</button>`).join("");
+chipsEl.querySelectorAll(".chip").forEach(c => c.onclick = () => {
+  document.getElementById("q").value = c.textContent;
+  document.getElementById("askform").requestSubmit();
+});
+
+let asking = false;
+document.getElementById("askform").onsubmit = async (ev) => {
+  ev.preventDefault();
+  const q = document.getElementById("q").value.trim();
+  if (!q || asking) return;
+
+  const send = document.getElementById("asksend");
+  const box = document.getElementById("answer");
+  const text = document.getElementById("answertext");
+  asking = true; send.disabled = true;
+  box.hidden = false;
+  text.textContent = "Thinking…";
+  document.getElementById("verdict").innerHTML = "";
+  document.getElementById("trace").innerHTML = "";
+
+  // The backend sleeps after 15 minutes and takes most of a minute to wake. Say so,
+  // but only once it is actually slow, so a warm server never shows the message.
+  const slow = setTimeout(() => { text.textContent = "Waking the analysis server — this can take up to a minute…"; }, 1800);
+
+  try{
+    const res = await fetch(API_URL + "/ask", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ question:q, district: BUNDLE ? BUNDLE.code : null }),
+      signal: AbortSignal.timeout(90000),
+    });
+    clearTimeout(slow);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || `The server returned ${res.status}.`);
+
+    text.textContent = data.answer || "No answer.";
+
+    if (data.verified != null){
+      document.getElementById("verdict").innerHTML = data.verified
+        ? `<span class="pill ok">verified</span><span>every number traced back to the analysis</span>`
+        : `<span class="pill no">overruled</span><span>the model's wording was discarded; this is the computed text</span>`;
+    }
+    document.getElementById("trace").innerHTML = (data.trace || []).map(s =>
+      `<li><b>${s.agent}</b><span class="kind ${s.kind}">${s.kind}</span><br>${s.decided}</li>`).join("");
+  }catch(err){
+    clearTimeout(slow);
+    text.textContent = (err.name === "TimeoutError" || /timed out/i.test(err.message))
+      ? "The analysis server took too long — it may be waking up. Try again in a moment."
+      : `${err.message} The map and the shortlist above do not need the server, so they still work.`;
+  }finally{
+    asking = false; send.disabled = false;
+  }
+};
+</script>
+</body>
+</html>
