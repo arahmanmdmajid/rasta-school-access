@@ -19,6 +19,13 @@ DETOUR_FACTOR = 1.3
 THRESHOLD_MIN = 15
 BANDS_MIN = (15, 30, 45, 60)
 
+# --- Turning population into school-age children ---------------------------------
+# Kontur gives total population per hexagon, not ages. These shares convert it, and
+# they are the weakest link in the chain: they are national averages applied uniformly,
+# so a hexagon's child count is an ESTIMATE and is labelled as one everywhere it appears.
+CHILD_SHARE = 0.30          # share of population aged roughly 5-16
+GIRL_SHARE = 0.48           # share of those children who are girls
+
 # --- Equity ---------------------------------------------------------------------
 # No school dataset available for Pakistan carries a gender field (checked: UNICEF Giga,
 # OpenStreetMap, Overture). So girls cannot be handled on the supply side. They are
@@ -56,6 +63,17 @@ CITATIONS = {
     "BANDS_MIN": (
         "15/30/45/60 minute bands bracket the UNESCO comparison, whose two endpoints "
         "are the under-15-minute group and the 45-60 minute group."
+    ),
+    "CHILD_SHARE": (
+        "0.30 is an approximation of Pakistan's population aged 5-16, applied uniformly "
+        "to every hexagon because Kontur supplies total population only. This is the "
+        "weakest assumption in the model: real age structure varies between districts "
+        "and between urban and rural areas, so every child count is an estimate, never "
+        "a census figure."
+    ),
+    "GIRL_SHARE": (
+        "0.48 reflects Pakistan's slightly male-skewed child sex ratio. Applied "
+        "uniformly, with the same caveat as CHILD_SHARE."
     ),
     "GIRLS_PENALTY": (
         "0.15 is the attendance gap UNESCO GEM 2026 reports for the 45-60 minute cohort "

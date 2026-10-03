@@ -1,0 +1,337 @@
+"""
+Build a self-contained district bundle: everything the map needs, precomputed.
+
+The bundle IS the response. Each district becomes one JSON file that ships to the
+static site alongside the page, so the map, the hover readout, the choropleth and the
+shortlist need no server call at all - which also means a sleeping free-tier backend
+cannot break the demo.
+
+    python scripts/build_bundles.py --district PK714
+    python scripts/build_bundles.py --province Sindh
+    python scripts/build_bundles.py --district PK726 --facility-type health
+
+Build time only. Outputs to data/districts/<ADM2_PCODE>.json.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+import geopandas as gpd
+import numpy as np
+import pandas as pd
+import shapely
+from shapely.geometry import Point
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "api"))
+from rasta import config  # noqa: E402
+
+ROOT = Path(__file__).resolve().parents[1]
+RAW = ROOT / "data" / "raw"
+OUT = ROOT / "data" / "districts"
+
+ADMIN2 = f"/vsizip/{RAW / 'pak_admin_boundaries.shp.zip'}/pak_admin2.shp"
+KONTUR = RAW / "kontur_population_PK_20231101.gpkg"
+RWI_CSV = RAW / "ind_pak_relative_wealth_index.csv"
+GIGA = RAW / "giga_pak.json"
+
+MAX_BYTES = 900_000          # keep a district under ~1 MB so the page loads fast
+SIMPLIFY_M = 100             # metres, applied in UTM before writing render polygons
+MIN_POP_PER_HEX = 1          # a hexagon with nobody in it is not demand
+
+# Official school counts, for the completeness ratio. Only districts with a cited
+# figure get a ratio; the rest report "mapped" alone rather than inventing a
+# denominator. Source: Pakistan Institute of Education, Pakistan Education Statistics.
+OFFICIAL_SCHOOLS: dict[str, int] = {}
+OFFICIAL_PROVINCE = {"Sindh": 48000}          # PIE, Pakistan Education Statistics
+# Measured 2026-10-03 against the same bbox for every source, so the comparison is
+# like for like: OpenStreetMap 1,571, UNICEF Giga 1,557. See docs/data-provenance.md.
+PROVINCE_MAPPED = {"Sindh": 1557}
+
+
+# ----------------------------------------------------------------------------- load
+
+def load_district(code: str) -> gpd.GeoDataFrame:
+    admin = gpd.read_file(ADMIN2)
+    row = admin[admin["adm2_pcode"] == code]
+    if row.empty:
+        sys.exit(f"unknown district code {code}. Try --list to see them.")
+    return row.reset_index(drop=True)
+
+
+def load_schools(boundary: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Schools inside the district, from the cached Giga extract."""
+    if not GIGA.exists():
+        sys.exit(f"{GIGA} missing - run scripts/fetch_giga.py first")
+    rows = json.loads(GIGA.read_text(encoding="utf-8"))
+    df = pd.DataFrame(rows)
+    df = df[pd.to_numeric(df["latitude"], errors="coerce").notna()]
+    pts = gpd.GeoDataFrame(
+        {
+            "name": df["school_name"].fillna("").astype(str),
+            "level": df["education_level"].fillna("Unknown").astype(str),
+        },
+        geometry=gpd.points_from_xy(df["longitude"], df["latitude"]),
+        crs=4326,
+    )
+    return gpd.sjoin(pts, boundary[["geometry"]], predicate="within").drop(
+        columns=["index_right"]
+    ).reset_index(drop=True)
+
+
+def load_demand(boundary: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Kontur population hexes clipped to the district. Kontur ships in EPSG:3857."""
+    if not KONTUR.exists():
+        sys.exit(f"{KONTUR} missing - run scripts/fetch_data.py first")
+    bbox = tuple(boundary.to_crs(3857).total_bounds)
+    hexes = gpd.read_file(KONTUR, bbox=bbox).to_crs(4326)
+    inside = gpd.sjoin(hexes, boundary[["geometry"]], predicate="intersects")
+    inside = inside.drop(columns=["index_right"])
+    # Hexes with no people are not demand. Dropping them is both correct modelling and
+    # the difference between a 1.3 MB bundle and a 300 KB one in a desert district like
+    # Tharparkar, where most of the area is genuinely uninhabited.
+    inside = inside[inside["population"] >= MIN_POP_PER_HEX]
+    return inside.reset_index(drop=True)
+
+
+def attach_rwi(demand: gpd.GeoDataFrame, utm) -> gpd.GeoDataFrame:
+    """Nearest Relative Wealth Index point to each hexagon centroid."""
+    minx, miny, maxx, maxy = demand.total_bounds
+    pad = 0.1
+    rwi = pd.read_csv(RWI_CSV)
+    rwi = rwi[
+        rwi.longitude.between(minx - pad, maxx + pad)
+        & rwi.latitude.between(miny - pad, maxy + pad)
+    ]
+    if rwi.empty:
+        demand["rwi"] = np.nan
+        return demand
+
+    pts = gpd.GeoDataFrame(
+        rwi[["rwi"]].reset_index(drop=True),
+        geometry=gpd.points_from_xy(rwi.longitude, rwi.latitude),
+        crs=4326,
+    ).to_crs(utm)
+
+    centroids = gpd.GeoDataFrame(geometry=demand.to_crs(utm).centroid, crs=utm)
+    joined = gpd.sjoin_nearest(centroids, pts, how="left")
+    joined = joined[~joined.index.duplicated(keep="first")]
+    demand["rwi"] = joined["rwi"].to_numpy()
+    return demand
+
+
+# ------------------------------------------------------------------------- analysis
+
+def walk_minutes_to_supply(demand: gpd.GeoDataFrame, supply: gpd.GeoDataFrame, utm):
+    """Straight-line metres from each hexagon centroid to the nearest mapped school."""
+    centroids = gpd.GeoDataFrame(geometry=demand.to_crs(utm).centroid, crs=utm)
+    if supply.empty:
+        return np.full(len(demand), np.inf), np.full(len(demand), np.inf)
+
+    joined = gpd.sjoin_nearest(centroids, supply.to_crs(utm)[["geometry"]],
+                               how="left", distance_col="dist_m")
+    joined = joined[~joined.index.duplicated(keep="first")]
+    dist = joined["dist_m"].to_numpy(dtype=float)
+    return dist, np.array([config.walk_minutes(d) for d in dist])
+
+
+def shortlist(lon, lat, children, minutes, limit=10):
+    """
+    Greedy ranked sites to field-verify.
+
+    A candidate is scored by the currently-underserved children within one walking
+    catchment of it. Chosen sites are then spatially de-duplicated by that same radius,
+    so the list is ten different places rather than ten views of one village.
+    """
+    radius = config.walk_radius_m()
+    underserved = minutes > config.THRESHOLD_MIN
+    if not underserved.any():
+        return []
+
+    # Local metre scaling; good to better than 0.1% at these latitudes.
+    lat0 = float(np.mean(lat))
+    kx = 111_320.0 * np.cos(np.radians(lat0))
+    ky = 110_540.0
+    x, y = lon * kx, lat * ky
+
+    idx = np.flatnonzero(underserved)
+    picked, used = [], np.zeros(len(lon), dtype=bool)
+
+    for _ in range(limit):
+        best, best_score = -1, 0.0
+        for i in idx:
+            if used[i]:
+                continue
+            near = ((x - x[i]) ** 2 + (y - y[i]) ** 2) <= radius ** 2
+            score = float(children[near & underserved & ~used].sum())
+            if score > best_score:
+                best, best_score = i, score
+        if best < 0 or best_score <= 0:
+            break
+
+        near = ((x - x[best]) ** 2 + (y - y[best]) ** 2) <= radius ** 2
+        used |= near                      # never count the same children twice
+        picked.append({
+            "lon": round(float(lon[best]), 5),
+            "lat": round(float(lat[best]), 5),
+            "children_reached": int(round(best_score)),
+            "walk_min_to_nearest": round(float(minutes[best]), 1),
+            "intervention": "ncl",        # non-formal learning centre; see interventions
+        })
+        idx = np.array([i for i in idx if not used[i]])
+        if idx.size == 0:
+            break
+
+    return picked
+
+
+# ---------------------------------------------------------------------------- build
+
+def build(code: str, facility_type: str) -> Path:
+    boundary = load_district(code)
+    name = str(boundary.iloc[0]["adm2_name"])
+    province = str(boundary.iloc[0]["adm1_name"])
+    utm = boundary.estimate_utm_crs()
+    print(f"\n{code}  {name}, {province}   (UTM {utm.to_epsg()})")
+
+    supply = load_schools(boundary)
+    demand = load_demand(boundary)
+    print(f"  mapped schools {len(supply):,} | population hexes {len(demand):,}")
+    if demand.empty:
+        sys.exit("  no population hexes - nothing to build")
+
+    demand = attach_rwi(demand, utm)
+    dist_m, minutes = walk_minutes_to_supply(demand, supply, utm)
+
+    pop = demand["population"].to_numpy(dtype=float)
+    children = pop * config.CHILD_SHARE
+    # Centroids are computed in the projected CRS and then converted, not taken in
+    # degrees: a centroid of a lat/lon polygon is not the centroid of the real shape.
+    centroids = gpd.GeoSeries(demand.to_crs(utm).centroid, crs=utm).to_crs(4326)
+    lon = centroids.x.to_numpy()
+    lat = centroids.y.to_numpy()
+    cls = np.searchsorted(np.asarray(config.BANDS_MIN, dtype=float), minutes, side="left")
+
+    finite = np.isfinite(minutes)
+    underserved = finite & (minutes > config.THRESHOLD_MIN)
+    official = OFFICIAL_SCHOOLS.get(code)
+
+    # Dissolved choropleth: five class polygons, not thousands of hexagons.
+    #
+    # Two things keep this small. Dissolving hexes leaves a sawtooth edge that a 100 m
+    # tolerance barely touches, so the tolerance scales with the district - a 20,000 km2
+    # desert does not need metre-accurate contours. And GeoJSON is written at full float
+    # precision by default, which roughly doubles the file for digits nobody can see;
+    # snapping to a 1e-5 degree grid (about 1 m) also drops the vertices that collapse
+    # onto each other afterwards.
+    area_km2 = float(boundary.to_crs(utm).area.iloc[0]) / 1e6
+    tol = SIMPLIFY_M * max(1.0, (area_km2 / 1000.0) ** 0.5)
+    render = demand.to_crs(utm).assign(cls=cls).dissolve(by="cls")
+    render["geometry"] = render.geometry.simplify(tol)
+    render = render.to_crs(4326).reset_index()[["cls", "geometry"]]
+    render["geometry"] = shapely.set_precision(render.geometry.to_numpy(), 1e-5)
+    render = render[~render.geometry.is_empty]
+
+    bundle = {
+        "code": code,
+        "name": name,
+        "province": province,
+        "facility_type": facility_type,
+        "params": {
+            "kmh": config.WALK_KMH,
+            "detour": config.DETOUR_FACTOR,
+            "threshold_min": config.THRESHOLD_MIN,
+            "bands_min": list(config.BANDS_MIN),
+            "radius_m": round(config.walk_radius_m(), 1),
+            "child_share": config.CHILD_SHARE,
+        },
+        "confidence": {
+            "mapped": int(len(supply)),
+            "official": official,
+            "ratio": round(len(supply) / official, 3) if official else None,
+            "province_mapped": PROVINCE_MAPPED.get(province),
+            "province_official": OFFICIAL_PROVINCE.get(province),
+            "province_ratio": (
+                round(PROVINCE_MAPPED[province] / OFFICIAL_PROVINCE[province], 3)
+                if province in OFFICIAL_PROVINCE and province in PROVINCE_MAPPED
+                else None
+            ),
+            "verdict": "low",
+            "note": (
+                "Distances are to the nearest MAPPED school, and open school data for "
+                "Pakistan is radically incomplete. Three independent sources were tested "
+                "for Sindh: OpenStreetMap 1,571, UNICEF Giga 1,557 (OSM-derived), against "
+                "roughly 48,000 government schools on the official count - about 3%. "
+                "Everything here is therefore a list of places to FIELD-VERIFY, never a "
+                "confirmed gap, and a low figure for mapped schools says more about the "
+                "map than about the district."
+            ),
+        },
+        "totals": {
+            "population": int(pop.sum()),
+            "children_est": int(children.sum()),
+            "children_underserved_est": int(children[underserved].sum()),
+            "hexes": int(len(demand)),
+        },
+        "bounds": [round(float(v), 5) for v in demand.total_bounds],
+        "cells": {
+            "lon": [round(float(v), 5) for v in lon],
+            "lat": [round(float(v), 5) for v in lat],
+            "min": [round(float(m), 1) if np.isfinite(m) else -1 for m in minutes],
+            "pop": [int(round(v)) for v in pop],
+            "ch": [int(round(v)) for v in children],
+            "rwi": [None if pd.isna(v) else round(float(v), 3) for v in demand["rwi"]],
+        },
+        "render": json.loads(render.to_json(drop_id=True)),
+        "schools": json.loads(supply.to_crs(4326).to_json(drop_id=True)),
+        "shortlist": shortlist(lon, lat, children, minutes),
+    }
+
+    OUT.mkdir(parents=True, exist_ok=True)
+    path = OUT / f"{code}.json"
+    text = json.dumps(bundle, separators=(",", ":"))
+    path.write_text(text, encoding="utf-8")
+
+    pct = 100 * children[underserved].sum() / children.sum() if children.sum() else 0
+    print(f"  children est {children.sum():,.0f} | beyond {config.THRESHOLD_MIN} min: "
+          f"{children[underserved].sum():,.0f} ({pct:.0f}%)")
+    print(f"  shortlist {len(bundle['shortlist'])} sites | wrote {path.name} "
+          f"({len(text)/1000:.0f} KB)")
+
+    if len(text) > MAX_BYTES:
+        print(f"  WARNING: {len(text):,} bytes exceeds the {MAX_BYTES:,} budget")
+    return path
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--district", action="append", help="ADM2 pcode, repeatable")
+    parser.add_argument("--province", help="build every district in this province")
+    parser.add_argument("--facility-type", default=config.FACILITY_TYPE,
+                        choices=["education", "health"])
+    parser.add_argument("--list", action="store_true", help="list districts and exit")
+    args = parser.parse_args()
+
+    if args.list:
+        admin = gpd.read_file(ADMIN2)
+        for _, r in admin.sort_values(["adm1_name", "adm2_name"]).iterrows():
+            print(f"  {r['adm2_pcode']:8} {r['adm2_name']:28} {r['adm1_name']}")
+        return
+
+    codes = list(args.district or [])
+    if args.province:
+        admin = gpd.read_file(ADMIN2)
+        sel = admin[admin["adm1_name"].str.contains(args.province, case=False, na=False)]
+        codes += sel["adm2_pcode"].tolist()
+    if not codes:
+        sys.exit("pass --district <PCODE> or --province <name>")
+
+    for code in dict.fromkeys(codes):
+        build(code, args.facility_type)
+
+
+if __name__ == "__main__":
+    main()

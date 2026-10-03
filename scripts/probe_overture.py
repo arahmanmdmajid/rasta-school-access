@@ -62,23 +62,37 @@ def main() -> None:
     con.execute("INSTALL httpfs; LOAD httpfs; SET s3_region='us-west-2';")
 
     for label, (xmin, ymin, xmax, ymax) in BOXES.items():
-        query = f"""
-            SELECT count(*) AS n
-            FROM read_parquet('{source}', hive_partitioning=1)
+        # Overture renamed `categories` to `taxonomy` in recent releases, and added
+        # `basic_category` plus a `sources` array that records which upstream dataset
+        # each place came from - which is exactly the provenance Giga did not give us.
+        where = f"""
             WHERE bbox.xmin BETWEEN {xmin} AND {xmax}
               AND bbox.ymin BETWEEN {ymin} AND {ymax}
               AND (
-                    categories.primary ILIKE '%school%'
-                 OR categories.primary ILIKE '%education%'
-                 OR categories.primary ILIKE '%kindergarten%'
-                 OR list_contains(categories.alternate, 'school')
+                    taxonomy.primary ILIKE '%school%'
+                 OR taxonomy.primary ILIKE '%education%'
+                 OR taxonomy.primary ILIKE '%kindergarten%'
+                 OR basic_category ILIKE '%school%'
               )
         """
         try:
-            n = con.execute(query).fetchone()[0]
+            n = con.execute(
+                f"SELECT count(*) FROM read_parquet('{source}', hive_partitioning=1) {where}"
+            ).fetchone()[0]
             print(f"  {label:22} {n:>7,}   (baseline: {BASELINE[label]})")
+
+            if n:
+                rows = con.execute(f"""
+                    SELECT s.dataset, count(*) AS n
+                    FROM read_parquet('{source}', hive_partitioning=1),
+                         UNNEST(sources) AS t(s)
+                    {where}
+                    GROUP BY 1 ORDER BY 2 DESC LIMIT 5
+                """).fetchall()
+                breakdown = ", ".join(f"{d}={c:,}" for d, c in rows)
+                print(f"  {'':22} upstream: {breakdown}")
         except Exception as exc:
-            print(f"  {label:22} FAILED  {exc}")
+            print(f"  {label:22} FAILED  {str(exc)[:200]}")
             break
 
 
