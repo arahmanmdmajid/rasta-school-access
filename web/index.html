@@ -152,21 +152,50 @@ select:focus{outline:2px solid var(--accent); outline-offset:1px}
 .src a{color:inherit}
 
 /* ---------- ask: floating window over the map ---------- */
+/* The window stays shut until it is asked for. The button is what has to carry the
+   message that there is an AI behind this map, so it glows gently rather than sitting
+   there as another grey control. */
 #askfab{
   position:absolute; right:18px; bottom:22px; z-index:1150;
-  display:flex; align-items:center; gap:9px;
+  display:flex; align-items:center; gap:8px;
   background:var(--accent); color:#fff; border:0; border-radius:999px;
-  padding:12px 20px 12px 17px; font-weight:600; font-size:14.5px;
-  box-shadow:0 3px 10px rgba(0,0,0,.2),0 10px 30px rgba(0,0,0,.18); transition:.18s;
+  padding:12px 16px 12px 14px; font-weight:600; font-size:14.5px;
+  transition:transform .18s, box-shadow .18s;
+  animation:glow 2.8s ease-in-out infinite;
 }
 :root[data-theme="dark"] #askfab{color:#06201c}
-#askfab:hover{transform:translateY(-2px)}
-#askfab .dot{
-  width:8px; height:8px; border-radius:50%; background:currentColor; flex:none;
-  animation:pulse 2.4s ease-in-out infinite;
+#askfab:hover{
+  transform:translateY(-2px); animation:none;
+  box-shadow:0 0 0 7px color-mix(in srgb,var(--accent) 22%,transparent),
+             0 10px 26px rgba(0,0,0,.26);
 }
-@keyframes pulse{0%,100%{opacity:.45}50%{opacity:1}}
-#askfab[aria-expanded="true"]{opacity:0; pointer-events:none}
+#askfab:focus-visible{outline:2px solid var(--ink); outline-offset:3px}
+
+/* A halo that breathes outward — reads as "live" without flashing at anyone. */
+@keyframes glow{
+  0%,100%{ box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 42%,transparent),
+                      0 6px 18px rgba(0,0,0,.2); }
+  50%    { box-shadow:0 0 0 11px color-mix(in srgb,var(--accent) 0%,transparent),
+                      0 6px 18px rgba(0,0,0,.2); }
+}
+#askfab .spark{
+  width:17px; height:17px; fill:currentColor; flex:none;
+  animation:twinkle 2.8s ease-in-out infinite;
+}
+@keyframes twinkle{0%,100%{opacity:.75; transform:scale(.92)}50%{opacity:1; transform:scale(1.06)}}
+#askfab .ai{
+  font-size:9.5px; letter-spacing:.09em; font-weight:700; padding:2px 6px;
+  border-radius:999px; background:rgba(255,255,255,.22); line-height:1.4;
+}
+:root[data-theme="dark"] #askfab .ai{background:rgba(0,0,0,.18)}
+#askfab[aria-expanded="true"]{opacity:0; pointer-events:none; animation:none}
+
+/* Someone who has asked for less motion gets a static button, not a pulsing one. */
+@media (prefers-reduced-motion:reduce){
+  #askfab, #askfab .spark{animation:none}
+  #askfab{box-shadow:0 0 0 5px color-mix(in srgb,var(--accent) 20%,transparent),
+                     0 6px 18px rgba(0,0,0,.2)}
+}
 
 #askwin{
   position:absolute; right:18px; bottom:22px; z-index:1160; width:372px;
@@ -176,6 +205,10 @@ select:focus{outline:2px solid var(--accent); outline-offset:1px}
   box-shadow:0 4px 14px rgba(0,0,0,.18),0 24px 60px rgba(0,0,0,.26);
   animation:rise .18s ease-out;
 }
+/* Required. The browser hides [hidden] with display:none from its own stylesheet, but
+   the id selector above outranks it, so without this the window never actually closes -
+   the attribute flips and nothing moves. */
+#askwin[hidden]{display:none}
 @keyframes rise{from{opacity:0; transform:translateY(10px)}to{opacity:1; transform:none}}
 #askwin header{
   display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
@@ -379,7 +412,12 @@ select:focus{outline:2px solid var(--accent); outline-offset:1px}
     <!-- The agent pipeline floats over the map rather than competing with the shortlist
          for panel space: you are asking about the thing you are looking at. -->
     <button id="askfab" aria-expanded="false" aria-controls="askwin">
-      <span class="dot"></span> Ask the map
+      <svg class="spark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M12 2.6l1.9 5.3 5.3 1.9-5.3 1.9L12 17l-1.9-5.3L4.8 9.8l5.3-1.9z"/>
+        <path d="M18.6 14.6l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8z" opacity=".75"/>
+      </svg>
+      <span>Ask the map</span>
+      <span class="ai">AI</span>
     </button>
 
     <section id="askwin" hidden aria-labelledby="asktitle">
