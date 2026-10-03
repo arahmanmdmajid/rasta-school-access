@@ -37,12 +37,14 @@ ADMIN2 = f"/vsizip/{RAW / 'pak_admin_boundaries.shp.zip'}/pak_admin2.shp"
 KONTUR = RAW / "kontur_population_PK_20231101.gpkg"
 RWI_CSV = RAW / "ind_pak_relative_wealth_index.csv"
 GIGA = RAW / "giga_pak.json"
+OVERTURE = RAW / "overture_pak_schools.json"
 
 MAX_BYTES = 900_000          # keep a district under ~1 MB so the page loads fast
 SIMPLIFY_M = 100             # metres, applied in UTM before writing render polygons
 MIN_POP_PER_HEX = 1          # a hexagon with nobody in it is not demand
 NO_SUPPLY_MIN = 999          # minutes recorded when no mapped school exists at all
 CANDIDATE_CAP = 600          # densest underserved cells considered as shortlist sites
+DEDUPE_M = 75                # two points this close are the same school in both sources
 
 # Official school counts, for the completeness ratio. Only districts with a cited
 # figure get a ratio; the rest report "mapped" alone rather than inventing a
@@ -64,24 +66,66 @@ def load_district(code: str) -> gpd.GeoDataFrame:
     return row.reset_index(drop=True)
 
 
-def load_schools(boundary: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    """Schools inside the district, from the cached Giga extract."""
+def _giga_points() -> gpd.GeoDataFrame:
     if not GIGA.exists():
-        sys.exit(f"{GIGA} missing - run scripts/fetch_giga.py first")
-    rows = json.loads(GIGA.read_text(encoding="utf-8"))
-    df = pd.DataFrame(rows)
+        return gpd.GeoDataFrame({"name": [], "level": [], "source": []}, geometry=[], crs=4326)
+    df = pd.DataFrame(json.loads(GIGA.read_text(encoding="utf-8")))
     df = df[pd.to_numeric(df["latitude"], errors="coerce").notna()]
-    pts = gpd.GeoDataFrame(
-        {
-            "name": df["school_name"].fillna("").astype(str),
-            "level": df["education_level"].fillna("Unknown").astype(str),
-        },
-        geometry=gpd.points_from_xy(df["longitude"], df["latitude"]),
-        crs=4326,
-    )
-    return gpd.sjoin(pts, boundary[["geometry"]], predicate="within").drop(
-        columns=["index_right"]
-    ).reset_index(drop=True)
+    return gpd.GeoDataFrame(
+        {"name": df["school_name"].fillna("").astype(str),
+         "level": df["education_level"].fillna("Unknown").astype(str),
+         "source": "giga"},
+        geometry=gpd.points_from_xy(df["longitude"], df["latitude"]), crs=4326)
+
+
+def _overture_points() -> gpd.GeoDataFrame:
+    if not OVERTURE.exists():
+        return gpd.GeoDataFrame({"name": [], "level": [], "source": []}, geometry=[], crs=4326)
+    df = pd.DataFrame(json.loads(OVERTURE.read_text(encoding="utf-8")))
+    if df.empty:
+        return gpd.GeoDataFrame({"name": [], "level": [], "source": []}, geometry=[], crs=4326)
+    return gpd.GeoDataFrame(
+        {"name": df["name"].fillna("").astype(str),
+         "level": df["category"].fillna("Unknown").astype(str),
+         "source": "overture"},
+        geometry=gpd.points_from_xy(df["longitude"], df["latitude"]), crs=4326)
+
+
+def load_schools(boundary: gpd.GeoDataFrame, utm) -> gpd.GeoDataFrame:
+    """
+    Schools inside the district, from both open sources, de-duplicated.
+
+    Using both is worth the trouble because they are genuinely independent. UNICEF Giga
+    turned out to be OpenStreetMap-derived for Pakistan (1,557 for Sindh against OSM's
+    1,571, and 2 in Tharparkar either way), whereas Overture's Pakistan schools come
+    overwhelmingly from Meta - 6,042 for Sindh and 228 in Tharparkar. Neither is
+    complete; together they are measurably less incomplete.
+
+    Two points within DEDUPE_M of each other are treated as the same school, with the
+    Giga record kept so the education_level field survives.
+    """
+    parts = [p for p in (_giga_points(), _overture_points()) if len(p)]
+    if not parts:
+        sys.exit("no school data - run scripts/fetch_giga.py and scripts/fetch_overture.py")
+
+    inside = []
+    for part in parts:
+        hit = gpd.sjoin(part, boundary[["geometry"]], predicate="within")
+        inside.append(hit.drop(columns=["index_right"]))
+
+    giga = inside[0].to_crs(utm).reset_index(drop=True)
+    if len(inside) < 2 or inside[1].empty:
+        return giga.to_crs(4326)
+
+    extra = inside[1].to_crs(utm).reset_index(drop=True)
+    if not giga.empty:
+        joined = gpd.sjoin_nearest(extra, giga[["geometry"]], how="left",
+                                   max_distance=DEDUPE_M, distance_col="_d")
+        joined = joined[~joined.index.duplicated(keep="first")]
+        extra = extra[joined["index_right"].isna().to_numpy()]
+
+    merged = pd.concat([giga, extra], ignore_index=True)
+    return gpd.GeoDataFrame(merged, geometry="geometry", crs=utm).to_crs(4326)
 
 
 def load_demand(boundary: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
@@ -216,7 +260,7 @@ def build(code: str, facility_type: str) -> Path:
     utm = boundary.estimate_utm_crs()
     print(f"\n{code}  {name}, {province}   (UTM {utm.to_epsg()})")
 
-    supply = load_schools(boundary)
+    supply = load_schools(boundary, utm)
     demand = load_demand(boundary)
     print(f"  mapped schools {len(supply):,} | population hexes {len(demand):,}")
     if demand.empty:

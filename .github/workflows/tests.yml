@@ -1,0 +1,27 @@
+# Without this, nothing substantiates the "passing test suite" claim: Render installs
+# only the runtime requirements, so the suite never runs there.
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install
+        run: pip install -r requirements-dev.txt
+
+      - name: Test
+        # No GROQ_API_KEY is set, so the suite runs on the deterministic path and makes
+        # no network call. That is the point: it also proves the fallbacks work.
+        run: pytest -q
