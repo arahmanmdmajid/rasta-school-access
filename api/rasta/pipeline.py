@@ -90,7 +90,7 @@ def answer(question: str, district_code: str | None = None) -> dict:
                   "decided": f"{len(brief.split())} words"})
 
     # --- 6. Verifier (code): may overrule the writer ------------------------------
-    check = verifier.verify(brief, result["facts"], result["text"])
+    check = verifier.verify(brief, result["facts"], result["text"], prov["caveat"])
     if not check["ok"]:
         brief = result["text"]
         wrote = "computed (verifier overruled)"

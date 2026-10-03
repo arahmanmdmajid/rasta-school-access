@@ -151,6 +151,40 @@ select:focus{outline:2px solid var(--accent); outline-offset:1px}
 .src{margin-top:26px; font-size:12px; color:var(--muted); line-height:1.65}
 .src a{color:inherit}
 
+/* ---------- ask ---------- */
+#askform{display:flex; gap:7px}
+#q{
+  flex:1; min-width:0; padding:10px 12px; border-radius:10px; border:1px solid var(--line);
+  background:var(--bg); color:var(--ink); font:inherit; font-size:14px;
+}
+#q:focus{outline:2px solid var(--accent); outline-offset:1px}
+#asksend{padding:10px 15px; font-size:14px; border-radius:10px; flex:none}
+#asksend[disabled]{opacity:.55}
+#chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:9px}
+.chip{
+  background:var(--bg); border:1px solid var(--line); border-radius:999px;
+  padding:5px 11px; font-size:12px; color:var(--muted); transition:.15s;
+}
+.chip:hover{border-color:var(--accent); color:var(--ink)}
+#answer{margin-top:13px; border:1px solid var(--line); border-radius:var(--r); padding:14px 15px; background:var(--bg)}
+#answertext{margin:0; font-size:14px; line-height:1.6}
+#verdict{margin-top:10px; font-size:11.5px; display:flex; align-items:center; gap:7px}
+.pill{border-radius:999px; padding:3px 9px; font-weight:600; font-size:11px}
+.pill.ok{background:var(--accent-soft); color:var(--accent)}
+.pill.no{background:var(--warn-bg); color:var(--warn)}
+#tracebox{margin-top:11px; font-size:12px}
+#tracebox summary{cursor:pointer; color:var(--muted); user-select:none}
+#tracebox summary:hover{color:var(--ink)}
+#trace{margin:10px 0 0; padding-left:19px; line-height:1.55}
+#trace li{margin-bottom:6px; color:var(--muted)}
+#trace b{color:var(--ink); font-weight:600}
+#trace .kind{
+  font-size:9.5px; letter-spacing:.07em; text-transform:uppercase; padding:1px 5px;
+  border-radius:4px; border:1px solid var(--line); margin-left:5px;
+}
+#trace .llm{color:var(--b2); border-color:var(--b2)}
+#trace .code{color:var(--accent); border-color:var(--accent)}
+
 /* ---------- misc ---------- */
 #themebtn{
   background:transparent; border:1px solid var(--line); border-radius:9px;
@@ -269,6 +303,24 @@ select:focus{outline:2px solid var(--accent); outline-offset:1px}
 
       <div class="section">
         <div class="banner" id="conf">—</div>
+      </div>
+
+      <div class="section">
+        <div class="label">Ask the analysis</div>
+        <form id="askform">
+          <input id="q" type="text" autocomplete="off"
+                 placeholder="Where should we open learning centres?" aria-label="Ask a question">
+          <button class="btn" id="asksend" type="submit">Ask</button>
+        </form>
+        <div id="chips"></div>
+        <div id="answer" hidden>
+          <p id="answertext"></p>
+          <div id="verdict"></div>
+          <details id="tracebox">
+            <summary>How this answer was produced</summary>
+            <ol id="trace"></ol>
+          </details>
+        </div>
       </div>
 
       <div class="section">
@@ -564,6 +616,73 @@ async function loadDistrict(code){
 document.getElementById("enter").onclick = () => {
   document.getElementById("landing").classList.add("hide");
   setTimeout(fitDistrict, 60);
+};
+
+/* ---------------- ask: the agent pipeline ---------------- */
+// Only this part needs the backend. Everything above — map, hover, choropleth,
+// shortlist — is static, so a sleeping free-tier service degrades one feature rather
+// than the demo.
+const LOCAL = ["127.0.0.1","localhost"].includes(location.hostname);
+const API_URL = LOCAL ? "http://127.0.0.1:7860" : "https://rasta-api.onrender.com";
+
+const EXAMPLES = [
+  "Where should we open learning centres?",
+  "How many girls are beyond a 30 minute walk?",
+  "Compare these districts",
+];
+const chipsEl = document.getElementById("chips");
+chipsEl.innerHTML = EXAMPLES.map(e => `<button type="button" class="chip">${e}</button>`).join("");
+chipsEl.querySelectorAll(".chip").forEach(c => c.onclick = () => {
+  document.getElementById("q").value = c.textContent;
+  document.getElementById("askform").requestSubmit();
+});
+
+let asking = false;
+document.getElementById("askform").onsubmit = async (ev) => {
+  ev.preventDefault();
+  const q = document.getElementById("q").value.trim();
+  if (!q || asking) return;
+
+  const send = document.getElementById("asksend");
+  const box = document.getElementById("answer");
+  const text = document.getElementById("answertext");
+  asking = true; send.disabled = true;
+  box.hidden = false;
+  text.textContent = "Thinking…";
+  document.getElementById("verdict").innerHTML = "";
+  document.getElementById("trace").innerHTML = "";
+
+  // The backend sleeps after 15 minutes and takes most of a minute to wake. Say so,
+  // but only once it is actually slow, so a warm server never shows the message.
+  const slow = setTimeout(() => { text.textContent = "Waking the analysis server — this can take up to a minute…"; }, 1800);
+
+  try{
+    const res = await fetch(API_URL + "/ask", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ question:q, district: BUNDLE ? BUNDLE.code : null }),
+      signal: AbortSignal.timeout(90000),
+    });
+    clearTimeout(slow);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || `The server returned ${res.status}.`);
+
+    text.textContent = data.answer || "No answer.";
+
+    if (data.verified != null){
+      document.getElementById("verdict").innerHTML = data.verified
+        ? `<span class="pill ok">verified</span><span>every number traced back to the analysis</span>`
+        : `<span class="pill no">overruled</span><span>the model's wording was discarded; this is the computed text</span>`;
+    }
+    document.getElementById("trace").innerHTML = (data.trace || []).map(s =>
+      `<li><b>${s.agent}</b><span class="kind ${s.kind}">${s.kind}</span><br>${s.decided}</li>`).join("");
+  }catch(err){
+    clearTimeout(slow);
+    text.textContent = (err.name === "TimeoutError" || /timed out/i.test(err.message))
+      ? "The analysis server took too long — it may be waking up. Try again in a moment."
+      : `${err.message} The map and the shortlist above do not need the server, so they still work.`;
+  }finally{
+    asking = false; send.disabled = false;
+  }
 };
 </script>
 </body>

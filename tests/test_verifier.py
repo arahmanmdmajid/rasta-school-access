@@ -94,3 +94,54 @@ def test_verifier_counts_what_it_checked():
 
 def test_verifier_passes_prose_with_no_numbers():
     assert verifier.verify("Most children here are too far from a school.", FACTS, TEXT)["ok"] is True
+
+
+# ------------------------------------------- the small-integer boundary (measured)
+
+@pytest.mark.parametrize("brief", [
+    "There are 3 things to do next.",
+    "Consider 2 options before committing.",
+    "1. Visit the site. 2. Check the roof. 3. Talk to the teacher.",
+])
+def test_bare_small_integers_are_not_treated_as_claims(brief):
+    """
+    Measured against real model output: the ONLY false rejections were bare small
+    integers used as list markers or counts. Flagging those would have made the
+    verifier fire on good answers, and a verifier that cries wolf gets turned off.
+    """
+    assert verifier.verify(brief, FACTS, TEXT)["ok"] is True
+
+
+@pytest.mark.parametrize("brief", [
+    "Only 3% of children are beyond the threshold.",
+    "The nearest school is 3 minutes away.",
+    "Children walk 2 km to school here.",
+])
+def test_small_numbers_with_a_unit_are_still_claims(brief):
+    """The exemption above must not become a hole: a unit makes it an assertion."""
+    assert verifier.verify(brief, FACTS, TEXT)["ok"] is False
+
+
+# ------------------------------------------------- numbers from the data caveat
+
+CAVEAT = ("Only 107 schools are mapped in Malir Karachi. Across Sindh, open data holds "
+          "about 3% of the schools the official count reports.")
+
+
+def test_numbers_from_the_caveat_are_allowed():
+    """
+    The writer is handed the provenance caveat and told to reflect it, so repeating its
+    figures is correct behaviour. Leaving the caveat out of the allowed set made the
+    verifier reject three of ten real answers for doing as they were told - the bug this
+    test exists to stop coming back.
+    """
+    brief = ("About 553,751 children are beyond a 15 minute walk. Only 107 schools are "
+             "mapped here, roughly 3% of the official count, so these need field checks.")
+    result = verifier.verify(brief, FACTS, TEXT, CAVEAT)
+    assert result["ok"] is True, f"falsely rejected {result['unsupported']}"
+
+
+def test_the_caveat_does_not_become_a_loophole():
+    """Admitting the caveat must not admit everything else."""
+    brief = "Only 107 schools are mapped, and 9,400 children are affected."
+    assert verifier.verify(brief, FACTS, TEXT, CAVEAT)["ok"] is False
