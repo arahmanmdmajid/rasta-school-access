@@ -151,8 +151,45 @@ select:focus{outline:2px solid var(--accent); outline-offset:1px}
 .src{margin-top:26px; font-size:12px; color:var(--muted); line-height:1.65}
 .src a{color:inherit}
 
-/* ---------- ask ---------- */
-#askform{display:flex; gap:7px}
+/* ---------- ask: floating window over the map ---------- */
+#askfab{
+  position:absolute; right:18px; bottom:22px; z-index:1150;
+  display:flex; align-items:center; gap:9px;
+  background:var(--accent); color:#fff; border:0; border-radius:999px;
+  padding:12px 20px 12px 17px; font-weight:600; font-size:14.5px;
+  box-shadow:0 3px 10px rgba(0,0,0,.2),0 10px 30px rgba(0,0,0,.18); transition:.18s;
+}
+:root[data-theme="dark"] #askfab{color:#06201c}
+#askfab:hover{transform:translateY(-2px)}
+#askfab .dot{
+  width:8px; height:8px; border-radius:50%; background:currentColor; flex:none;
+  animation:pulse 2.4s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:.45}50%{opacity:1}}
+#askfab[aria-expanded="true"]{opacity:0; pointer-events:none}
+
+#askwin{
+  position:absolute; right:18px; bottom:22px; z-index:1160; width:372px;
+  max-width:calc(100% - 36px); max-height:min(76vh,620px);
+  display:flex; flex-direction:column;
+  background:var(--panel); border:1px solid var(--line); border-radius:16px;
+  box-shadow:0 4px 14px rgba(0,0,0,.18),0 24px 60px rgba(0,0,0,.26);
+  animation:rise .18s ease-out;
+}
+@keyframes rise{from{opacity:0; transform:translateY(10px)}to{opacity:1; transform:none}}
+#askwin header{
+  display:flex; align-items:flex-start; justify-content:space-between; gap:10px;
+  padding:14px 16px 11px; border-bottom:1px solid var(--line);
+}
+#askwin h2{font-size:17px; margin:0}
+#askwhere{margin:3px 0 0; font-size:12px; color:var(--muted)}
+#askclose{
+  background:transparent; border:0; font-size:21px; line-height:1; color:var(--muted);
+  padding:2px 4px; border-radius:7px; flex:none;
+}
+#askclose:hover{color:var(--ink); background:var(--bg)}
+#askbody{padding:14px 16px; overflow-y:auto; flex:1; scrollbar-width:thin}
+#askform{display:flex; gap:7px; padding:11px 14px 14px; border-top:1px solid var(--line)}
 #q{
   flex:1; min-width:0; padding:10px 12px; border-radius:10px; border:1px solid var(--line);
   background:var(--bg); color:var(--ink); font:inherit; font-size:14px;
@@ -160,7 +197,7 @@ select:focus{outline:2px solid var(--accent); outline-offset:1px}
 #q:focus{outline:2px solid var(--accent); outline-offset:1px}
 #asksend{padding:10px 15px; font-size:14px; border-radius:10px; flex:none}
 #asksend[disabled]{opacity:.55}
-#chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:9px}
+#chips{display:flex; flex-wrap:wrap; gap:6px}
 .chip{
   background:var(--bg); border:1px solid var(--line); border-radius:999px;
   padding:5px 11px; font-size:12px; color:var(--muted); transition:.15s;
@@ -215,6 +252,14 @@ select:focus{outline:2px solid var(--accent); outline-offset:1px}
   #scroll{overflow:visible}
   #map{height:62vh; position:sticky; top:0}
   .facts{grid-template-columns:1fr}
+
+  /* On a phone the floating window becomes a bottom sheet across the full width —
+     a 372px card pinned to a corner is unusable at this size. */
+  #askfab{right:12px; bottom:14px; padding:11px 17px 11px 15px; font-size:14px}
+  #askwin{
+    right:8px; left:8px; bottom:8px; width:auto; max-width:none;
+    max-height:min(80vh,560px); border-radius:14px;
+  }
 }
 </style>
 </head>
@@ -306,24 +351,6 @@ select:focus{outline:2px solid var(--accent); outline-offset:1px}
       </div>
 
       <div class="section">
-        <div class="label">Ask the analysis</div>
-        <form id="askform">
-          <input id="q" type="text" autocomplete="off"
-                 placeholder="Where should we open learning centres?" aria-label="Ask a question">
-          <button class="btn" id="asksend" type="submit">Ask</button>
-        </form>
-        <div id="chips"></div>
-        <div id="answer" hidden>
-          <p id="answertext"></p>
-          <div id="verdict"></div>
-          <details id="tracebox">
-            <summary>How this answer was produced</summary>
-            <ol id="trace"></ol>
-          </details>
-        </div>
-      </div>
-
-      <div class="section">
         <div class="label">Sites to field-verify</div>
         <div id="sites"></div>
       </div>
@@ -346,6 +373,40 @@ select:focus{outline:2px solid var(--accent); outline-offset:1px}
     <div id="map"></div>
     <div id="loading"><span><span class="spin"></span>Loading district…</span></div>
     <div id="tip"></div>
+
+    <!-- The agent pipeline floats over the map rather than competing with the shortlist
+         for panel space: you are asking about the thing you are looking at. -->
+    <button id="askfab" aria-expanded="false" aria-controls="askwin">
+      <span class="dot"></span> Ask the map
+    </button>
+
+    <section id="askwin" hidden aria-labelledby="asktitle">
+      <header>
+        <div>
+          <h2 id="asktitle">Ask the map</h2>
+          <p id="askwhere">—</p>
+        </div>
+        <button id="askclose" aria-label="Close">&times;</button>
+      </header>
+
+      <div id="askbody">
+        <div id="chips"></div>
+        <div id="answer" hidden>
+          <p id="answertext"></p>
+          <div id="verdict"></div>
+          <details id="tracebox">
+            <summary>How this answer was produced</summary>
+            <ol id="trace"></ol>
+          </details>
+        </div>
+      </div>
+
+      <form id="askform">
+        <input id="q" type="text" autocomplete="off"
+               placeholder="Where should we open learning centres?" aria-label="Ask a question">
+        <button class="btn" id="asksend" type="submit">Ask</button>
+      </form>
+    </section>
   </div>
 </div>
 
@@ -489,19 +550,34 @@ function flush(){
 }
 
 /* ---------------- render ---------------- */
+// Hexagons are rebuilt here rather than shipped as polygons. The bundle carries one
+// shared set of six vertex offsets in metres, which reproduces every Kontur cell to
+// within about 4 m, so twelve numbers stand in for roughly a megabyte of coordinates.
+//
+// All the cells of one class go into a SINGLE L.polygon as a list of rings, which
+// Leaflet draws as one SVG path with many subpaths. Five paths total, whatever the
+// district: thousands of individual polygons would make panning sticky.
 function paintChoropleth(){
   choro.clearLayers();
   const cols = bandColors();
-  L.geoJSON(BUNDLE.render, {
-    // Kept translucent on purpose: the basemap underneath is how an officer recognises
-    // the place they are looking at, and a district with one mapped school would
-    // otherwise be an opaque sheet of a single colour.
-    style: f => ({
-      stroke:false, fillColor: cols[Math.min(f.properties.cls, 4)] || cols[4],
-      fillOpacity: isDark() ? .42 : .34,
-    }),
-    interactive:false,
-  }).addTo(choro);
+  const offs = BUNDLE.hex_offsets_m;
+  const n = CELLS.lon.length;
+  if (!offs || !offs.length) return;
+
+  const byClass = [[], [], [], [], []];
+  for (let i = 0; i < n; i++){
+    const lon = CELLS.lon[i], lat = CELLS.lat[i];
+    const ring = offs.map(([dx, dy]) => [lat + dy / ky, lon + dx / kx]);
+    byClass[Math.min(CELLS.cls[i], 4)].push(ring);
+  }
+  byClass.forEach((rings, c) => {
+    if (!rings.length) return;
+    // Translucent on purpose: the basemap underneath is how an officer recognises the
+    // place they are looking at.
+    L.polygon(rings, {
+      stroke:false, fillColor:cols[c], fillOpacity: isDark() ? .5 : .42, interactive:false,
+    }).addTo(choro);
+  });
 }
 function paintSchools(){
   schoolLayer.clearLayers();
@@ -550,6 +626,8 @@ function paintStats(){
   document.getElementById("s-schools").textContent  = fmt(c.mapped);
   document.getElementById("s-hex").textContent      = fmt(t.hexes);
   document.getElementById("sub").textContent = `${BUNDLE.name}, ${BUNDLE.province} — walking access to school.`;
+  const where = document.getElementById("askwhere");
+  if (where) where.textContent = `Answering about ${BUNDLE.name}, ${BUNDLE.province}`;
   document.getElementById("formulatext").textContent =
     `${p.threshold_min} min × ${p.kmh} km/h ÷ ${p.detour} detour = ${Math.round(p.radius_m)} m`;
   ring.setRadius(p.radius_m);
@@ -624,6 +702,23 @@ document.getElementById("enter").onclick = () => {
 // than the demo.
 const LOCAL = ["127.0.0.1","localhost"].includes(location.hostname);
 const API_URL = LOCAL ? "http://127.0.0.1:7860" : "https://rasta-api-2019.onrender.com";
+
+const fab = document.getElementById("askfab");
+const win = document.getElementById("askwin");
+
+function openAsk(){
+  win.hidden = false;
+  fab.setAttribute("aria-expanded", "true");
+  document.getElementById("q").focus();
+}
+function closeAsk(){
+  win.hidden = true;
+  fab.setAttribute("aria-expanded", "false");
+  fab.focus();
+}
+fab.onclick = openAsk;
+document.getElementById("askclose").onclick = closeAsk;
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !win.hidden) closeAsk(); });
 
 const EXAMPLES = [
   "Where should we open learning centres?",

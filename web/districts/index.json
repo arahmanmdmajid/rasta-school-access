@@ -7,7 +7,7 @@
    "mapped": 78,
    "children_est": 606056,
    "underserved_est": 563680,
-   "bytes": 397247
+   "bytes": 289717
   },
   {
    "code": "PK702",
@@ -16,7 +16,7 @@
    "mapped": 804,
    "children_est": 1042653,
    "underserved_est": 51589,
-   "bytes": 159915
+   "bytes": 156903
   },
   {
    "code": "PK703",
@@ -25,7 +25,7 @@
    "mapped": 82,
    "children_est": 588029,
    "underserved_est": 512668,
-   "bytes": 249066
+   "bytes": 163066
   },
   {
    "code": "PK704",
@@ -34,7 +34,7 @@
    "mapped": 1227,
    "children_est": 1177713,
    "underserved_est": 152565,
-   "bytes": 257928
+   "bytes": 244768
   },
   {
    "code": "PK705",
@@ -43,7 +43,7 @@
    "mapped": 119,
    "children_est": 515434,
    "underserved_est": 438851,
-   "bytes": 242620
+   "bytes": 164616
   },
   {
    "code": "PK706",
@@ -52,7 +52,7 @@
    "mapped": 472,
    "children_est": 796918,
    "underserved_est": 298904,
-   "bytes": 210263
+   "bytes": 141357
   },
   {
    "code": "PK707",
@@ -61,7 +61,7 @@
    "mapped": 36,
    "children_est": 399654,
    "underserved_est": 360668,
-   "bytes": 212592
+   "bytes": 120313
   },
   {
    "code": "PK708",
@@ -70,7 +70,7 @@
    "mapped": 84,
    "children_est": 320252,
    "underserved_est": 250118,
-   "bytes": 261320
+   "bytes": 160636
   },
   {
    "code": "PK709",
@@ -79,7 +79,7 @@
    "mapped": 55,
    "children_est": 496187,
    "underserved_est": 442069,
-   "bytes": 244550
+   "bytes": 150836
   },
   {
    "code": "PK710",
@@ -88,7 +88,7 @@
    "mapped": 46,
    "children_est": 349294,
    "underserved_est": 303296,
-   "bytes": 206201
+   "bytes": 119314
   },
   {
    "code": "PK711",
@@ -97,7 +97,7 @@
    "mapped": 166,
    "children_est": 833710,
    "underserved_est": 732295,
-   "bytes": 316316
+   "bytes": 233798
   },
   {
    "code": "PK712",
@@ -106,7 +106,7 @@
    "mapped": 373,
    "children_est": 772857,
    "underserved_est": 135761,
-   "bytes": 85894
+   "bytes": 78562
   },
   {
    "code": "PK713",
@@ -115,7 +115,7 @@
    "mapped": 111,
    "children_est": 541871,
    "underserved_est": 421546,
-   "bytes": 188592
+   "bytes": 103853
   },
   {
    "code": "PK714",
@@ -124,7 +124,7 @@
    "mapped": 352,
    "children_est": 797564,
    "underserved_est": 444816,
-   "bytes": 228866
+   "bytes": 124636
   },
   {
    "code": "PK715",
@@ -133,7 +133,7 @@
    "mapped": 35,
    "children_est": 278639,
    "underserved_est": 235051,
-   "bytes": 149651
+   "bytes": 78265
   },
   {
    "code": "PK716",
@@ -142,7 +142,7 @@
    "mapped": 98,
    "children_est": 535933,
    "underserved_est": 471035,
-   "bytes": 282253
+   "bytes": 184890
   },
   {
    "code": "PK717",
@@ -151,7 +151,7 @@
    "mapped": 92,
    "children_est": 584662,
    "underserved_est": 511041,
-   "bytes": 258748
+   "bytes": 152008
   },
   {
    "code": "PK718",
@@ -160,7 +160,7 @@
    "mapped": 144,
    "children_est": 725841,
    "underserved_est": 644916,
-   "bytes": 363646
+   "bytes": 281508
   },
   {
    "code": "PK719",
@@ -169,7 +169,7 @@
    "mapped": 115,
    "children_est": 588106,
    "underserved_est": 518133,
-   "bytes": 272397
+   "bytes": 192003
   },
   {
    "code": "PK720",
@@ -178,7 +178,7 @@
    "mapped": 58,
    "children_est": 477714,
    "underserved_est": 432263,
-   "bytes": 230622
+   "bytes": 124745
   },
   {
    "code": "PK721",
@@ -187,7 +187,7 @@
    "mapped": 1073,
    "children_est": 1380864,
    "underserved_est": 196851,
-   "bytes": 251332
+   "bytes": 218907
   },
   {
    "code": "PK722",
@@ -196,7 +196,7 @@
    "mapped": 23,
    "children_est": 279474,
    "underserved_est": 263016,
-   "bytes": 188170
+   "bytes": 137860
   },
   {
    "code": "PK723",
@@ -205,7 +205,7 @@
    "mapped": 158,
    "children_est": 492409,
    "underserved_est": 364708,
-   "bytes": 188434
+   "bytes": 127946
   },
   {
    "code": "PK724",
@@ -214,7 +214,7 @@
    "mapped": 70,
    "children_est": 270387,
    "underserved_est": 234999,
-   "bytes": 163477
+   "bytes": 95735
   },
   {
    "code": "PK725",
@@ -223,7 +223,7 @@
    "mapped": 37,
    "children_est": 248232,
    "underserved_est": 218549,
-   "bytes": 170610
+   "bytes": 88906
   },
   {
    "code": "PK726",
@@ -232,7 +232,7 @@
    "mapped": 55,
    "children_est": 487010,
    "underserved_est": 457901,
-   "bytes": 502603
+   "bytes": 340457
   },
   {
    "code": "PK727",
@@ -241,7 +241,7 @@
    "mapped": 56,
    "children_est": 312390,
    "underserved_est": 285351,
-   "bytes": 246794
+   "bytes": 171046
   },
   {
    "code": "PK728",
@@ -250,7 +250,7 @@
    "mapped": 59,
    "children_est": 364530,
    "underserved_est": 335777,
-   "bytes": 234938
+   "bytes": 154744
   },
   {
    "code": "PK729",
@@ -259,7 +259,7 @@
    "mapped": 312,
    "children_est": 960531,
    "underserved_est": 301554,
-   "bytes": 93777
+   "bytes": 73890
   }
  ],
  "note": "Districts built for this demo. The pipeline runs on any of Pakistan's 160 ADM2 districts; these are the ones bundled here."
