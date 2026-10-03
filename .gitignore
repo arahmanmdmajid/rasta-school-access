@@ -16,3 +16,6 @@ __pycache__/
 .DS_Store
 Thumbs.db
 *.log
+
+# Build-time data downloads (large, re-fetchable, never committed)
+data/raw/

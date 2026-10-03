@@ -35,12 +35,12 @@ for _env in (os.path.join(os.path.dirname(__file__), ".env"), os.path.join(os.pa
                 _k, _v = _line.strip().split("=", 1)
                 os.environ.setdefault(_k.strip(), _v.strip().strip('"'))
 
-from geomind import ai, analysis, data, draw, suggest  # noqa: E402  (after .env is loaded)
+from rasta import ai, analysis, data, draw, suggest  # noqa: E402  (after .env is loaded)
 
 # Only our own web pages may call this API from a browser.
 ALLOWED_ORIGINS = os.environ.get(
     "ALLOWED_ORIGINS",
-    "https://geomind-ai-geomind-ai.static.hf.space,"
+    "https://arahmanmdmajid-rasta-school-access.static.hf.space,"
     "http://127.0.0.1:8770,http://localhost:8770",
 ).split(",")
 

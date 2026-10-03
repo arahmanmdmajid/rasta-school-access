@@ -1,0 +1,12 @@
+[project]
+name = "rasta"
+version = "0.1.0"
+description = "Where to put the next school, for NGOs working in Pakistan."
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+# `api` on the path so `import rasta` and `import app` work from the repo root.
+# This replaces the sys.path.insert that used to live in tests/conftest.py.
+pythonpath = ["api"]
+testpaths = ["tests"]
+addopts = "-q"

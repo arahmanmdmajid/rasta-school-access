@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from geomind import ai
+from rasta import ai
 
 RAW = json.loads((Path(__file__).parent / "router_raw.json").read_text(encoding="utf-8"))
 TESTER_QUESTIONS = [

@@ -2,7 +2,7 @@
 # In Render: New > Blueprint > pick this repo. Then set GROQ_API_KEY in the service's Environment.
 services:
   - type: web
-    name: geomind-api
+    name: rasta-api
     runtime: python
     plan: free
     buildCommand: pip install -r api/requirements.txt
@@ -15,4 +15,4 @@ services:
       - key: GROQ_API_KEY
         sync: false            # secret: entered in the Render dashboard, never committed
       - key: ALLOWED_ORIGINS
-        value: https://geomind-ai-geomind-ai.static.hf.space
+        value: https://arahmanmdmajid-rasta-school-access.static.hf.space

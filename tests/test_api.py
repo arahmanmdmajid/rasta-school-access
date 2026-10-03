@@ -67,9 +67,9 @@ def test_denied_location_falls_back_to_centre(client):
 
 
 def test_cors_only_for_our_pages(client):
-    ok = client.options("/ask", headers={"Origin": "https://geomind-ai-geomind-ai.static.hf.space",
+    ok = client.options("/ask", headers={"Origin": "https://arahmanmdmajid-rasta-school-access.static.hf.space",
                                          "Access-Control-Request-Method": "POST"})
     bad = client.options("/ask", headers={"Origin": "https://evil.example.com",
                                           "Access-Control-Request-Method": "POST"})
-    assert ok.headers.get("access-control-allow-origin") == "https://geomind-ai-geomind-ai.static.hf.space"
+    assert ok.headers.get("access-control-allow-origin") == "https://arahmanmdmajid-rasta-school-access.static.hf.space"
     assert "access-control-allow-origin" not in bad.headers

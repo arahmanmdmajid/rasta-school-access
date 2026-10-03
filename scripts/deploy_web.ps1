@@ -1,7 +1,7 @@
 # Deploy the web page to the live Hugging Face Static Space (free).
 # Requires: pip install huggingface_hub, then `hf auth login` with your own token.
 param(
-    [string]$Space = "GeoMind-AI/geomind-ai",
+    [string]$Space = "arahmanmdmajid/rasta-school-access",
     [string]$Message = "Deploy web page"
 )
 $root = Split-Path $PSScriptRoot -Parent

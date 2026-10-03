@@ -1,7 +1,7 @@
 """The analyses must reproduce the numbers measured on the original app."""
 import pytest
 
-from geomind import analysis, data
+from rasta import analysis, data
 
 
 @pytest.mark.parametrize("key, schools, facilities", [
