@@ -8,6 +8,7 @@ broke the tests and taught you nothing about whether the code was right.
 
 import pytest
 
+from conftest import DISTRICTS
 from rasta import analyst, bundles, config, pipeline
 
 
@@ -18,6 +19,31 @@ def test_cells_are_parallel_and_complete(bundle):
     lengths = {k: len(v) for k, v in cells.items()}
     assert len(set(lengths.values())) == 1, f"ragged cell arrays: {lengths}"
     assert lengths["lon"] == bundle["totals"]["hexes"]
+
+
+def test_bundle_carries_what_the_page_needs_to_draw_hexagons(bundle):
+    """
+    The page rebuilds every hexagon from a centroid plus one shared template, so a
+    bundle missing either is a blank map. This caught a real failure: the browser was
+    serving a cached bundle from before these fields existed and the choropleth silently
+    drew nothing.
+    """
+    assert len(bundle["hex_offsets_m"]) == 6, "a hexagon needs six vertex offsets"
+    for dx, dy in bundle["hex_offsets_m"]:
+        assert 100 < (dx ** 2 + dy ** 2) ** 0.5 < 2000, "offset is not a plausible hex radius"
+    assert "cls" in bundle["cells"], "no class per cell means nothing to colour"
+    assert set(bundle["cells"]["cls"]) <= {0, 1, 2, 3, 4}
+    assert "render" not in bundle, "polygons are no longer shipped; the browser builds them"
+
+
+def test_index_carries_a_build_stamp():
+    """
+    Without this the page cannot bust its own cache, and a rebuild stays invisible to
+    anyone who has opened the page before.
+    """
+    import json
+    index = json.loads((DISTRICTS / "index.json").read_text(encoding="utf-8"))
+    assert index.get("built", "").isdigit() and len(index["built"]) == 14
 
 
 def test_no_nan_or_negative_in_cells(bundle):

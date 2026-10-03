@@ -16,6 +16,7 @@ Build time only. Outputs to data/districts/<ADM2_PCODE>.json.
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
 import json
 import sys
 from pathlib import Path
@@ -440,7 +441,12 @@ def write_index() -> None:
             "underserved_est": bundle["totals"]["children_underserved_est"],
             "bytes": path.stat().st_size,
         })
+    # A build stamp the page appends to every bundle request. Without it the browser
+    # happily serves a bundle from a previous build forever, and a rebuild is invisible
+    # to anyone who has opened the page before - which is exactly the person you least
+    # want seeing stale numbers.
     index = {
+        "built": datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S"),
         "districts": entries,
         "note": (
             "Districts built for this demo. The pipeline runs on any of Pakistan's 160 "
