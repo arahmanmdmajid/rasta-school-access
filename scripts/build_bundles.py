@@ -31,7 +31,7 @@ from rasta import config  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "data" / "raw"
-OUT = ROOT / "data" / "districts"
+OUT = ROOT / "web" / "districts"      # beside the page: one location, served statically
 
 ADMIN2 = f"/vsizip/{RAW / 'pak_admin_boundaries.shp.zip'}/pak_admin2.shp"
 KONTUR = RAW / "kontur_population_PK_20231101.gpkg"
@@ -41,6 +41,8 @@ GIGA = RAW / "giga_pak.json"
 MAX_BYTES = 900_000          # keep a district under ~1 MB so the page loads fast
 SIMPLIFY_M = 100             # metres, applied in UTM before writing render polygons
 MIN_POP_PER_HEX = 1          # a hexagon with nobody in it is not demand
+NO_SUPPLY_MIN = 999          # minutes recorded when no mapped school exists at all
+CANDIDATE_CAP = 600          # densest underserved cells considered as shortlist sites
 
 # Official school counts, for the completeness ratio. Only districts with a cited
 # figure get a ratio; the rest report "mapped" alone rather than inventing a
@@ -126,16 +128,28 @@ def attach_rwi(demand: gpd.GeoDataFrame, utm) -> gpd.GeoDataFrame:
 # ------------------------------------------------------------------------- analysis
 
 def walk_minutes_to_supply(demand: gpd.GeoDataFrame, supply: gpd.GeoDataFrame, utm):
-    """Straight-line metres from each hexagon centroid to the nearest mapped school."""
+    """
+    Straight-line metres from each hexagon centroid to the nearest mapped school.
+
+    When a district has no mapped school at all - which happens, Dadu has a population
+    over a million and zero schools in open data - every cell is beyond every walking
+    threshold. That is encoded as a large finite sentinel rather than infinity, because
+    infinity silently dropped out of the "underserved" mask while still counting in the
+    shortlist, and the two disagreed.
+    """
     centroids = gpd.GeoDataFrame(geometry=demand.to_crs(utm).centroid, crs=utm)
     if supply.empty:
-        return np.full(len(demand), np.inf), np.full(len(demand), np.inf)
+        return (np.full(len(demand), np.nan),
+                np.full(len(demand), float(NO_SUPPLY_MIN)))
 
     joined = gpd.sjoin_nearest(centroids, supply.to_crs(utm)[["geometry"]],
                                how="left", distance_col="dist_m")
     joined = joined[~joined.index.duplicated(keep="first")]
     dist = joined["dist_m"].to_numpy(dtype=float)
-    return dist, np.array([config.walk_minutes(d) for d in dist])
+    minutes = np.array([config.walk_minutes(d) for d in dist])
+    # Any cell that somehow failed to match is treated the same way: unreachable.
+    minutes = np.where(np.isfinite(minutes), minutes, float(NO_SUPPLY_MIN))
+    return dist, minutes
 
 
 def shortlist(lon, lat, children, minutes, limit=10):
@@ -157,7 +171,12 @@ def shortlist(lon, lat, children, minutes, limit=10):
     ky = 110_540.0
     x, y = lon * kx, lat * ky
 
-    idx = np.flatnonzero(underserved)
+    # Evaluating every underserved cell as a candidate is O(candidates x cells) per pick,
+    # which is minutes of CPU in a district like Tharparkar with 8,500 cells. The best
+    # site always sits on or beside a cell with many children, so only the densest
+    # candidates are worth scoring - and that turns minutes into under a second.
+    order = np.argsort(children)[::-1]
+    idx = np.array([i for i in order if underserved[i]][:CANDIDATE_CAP])
     picked, used = [], np.zeros(len(lon), dtype=bool)
 
     for _ in range(limit):
@@ -215,8 +234,7 @@ def build(code: str, facility_type: str) -> Path:
     lat = centroids.y.to_numpy()
     cls = np.searchsorted(np.asarray(config.BANDS_MIN, dtype=float), minutes, side="left")
 
-    finite = np.isfinite(minutes)
-    underserved = finite & (minutes > config.THRESHOLD_MIN)
+    underserved = minutes > config.THRESHOLD_MIN
     official = OFFICIAL_SCHOOLS.get(code)
 
     # Dissolved choropleth: five class polygons, not thousands of hexagons.
@@ -247,6 +265,7 @@ def build(code: str, facility_type: str) -> Path:
             "bands_min": list(config.BANDS_MIN),
             "radius_m": round(config.walk_radius_m(), 1),
             "child_share": config.CHILD_SHARE,
+            "no_supply_min": NO_SUPPLY_MIN,
         },
         "confidence": {
             "mapped": int(len(supply)),
@@ -280,7 +299,7 @@ def build(code: str, facility_type: str) -> Path:
         "cells": {
             "lon": [round(float(v), 5) for v in lon],
             "lat": [round(float(v), 5) for v in lat],
-            "min": [round(float(m), 1) if np.isfinite(m) else -1 for m in minutes],
+            "min": [round(float(m), 1) for m in minutes],
             "pop": [int(round(v)) for v in pop],
             "ch": [int(round(v)) for v in children],
             "rwi": [None if pd.isna(v) else round(float(v), 3) for v in demand["rwi"]],
@@ -331,6 +350,39 @@ def main() -> None:
 
     for code in dict.fromkeys(codes):
         build(code, args.facility_type)
+
+    write_index()
+
+
+def write_index() -> None:
+    """
+    A small catalogue of the districts that have been built.
+
+    The page reads this to populate its district picker, so a district that was never
+    built simply does not appear - which is how the app degrades honestly instead of
+    offering a district and then failing to load it.
+    """
+    entries = []
+    for path in sorted(OUT.glob("PK*.json")):
+        bundle = json.loads(path.read_text(encoding="utf-8"))
+        entries.append({
+            "code": bundle["code"],
+            "name": bundle["name"],
+            "province": bundle["province"],
+            "mapped": bundle["confidence"]["mapped"],
+            "children_est": bundle["totals"]["children_est"],
+            "underserved_est": bundle["totals"]["children_underserved_est"],
+            "bytes": path.stat().st_size,
+        })
+    index = {
+        "districts": entries,
+        "note": (
+            "Districts built for this demo. The pipeline runs on any of Pakistan's 160 "
+            "ADM2 districts; these are the ones bundled here."
+        ),
+    }
+    (OUT / "index.json").write_text(json.dumps(index, indent=1), encoding="utf-8")
+    print(f"\nindex.json: {len(entries)} districts")
 
 
 if __name__ == "__main__":

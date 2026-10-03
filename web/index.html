@@ -1,506 +1,570 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GeoMind AI</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rasta — where should the next school go?</title>
+<meta name="description" content="Rasta helps NGOs in Pakistan find where children live beyond a 15-minute walk of a school, and which sites to field-verify first.">
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
 <style>
-  /* ---------- design tokens: every colour is defined for BOTH themes ---------- */
-  :root {
-    --surface:    #ffffff;
-    --surface-2:  #f1f5f9;
-    --text:       #0f172a;
-    --muted:      #64748b;
-    --border:     #e2e8f0;
-    --accent:     #1d4ed8;
-    --accent-ink: #ffffff;
-    --shadow:     0 6px 24px rgba(15, 23, 42, .14);
-    --school:     #2563eb;
-    --facility:   #e11d48;
-    --near:       #059669;
-    --isolate:    #d97706;
+:root{
+  --bg:#f7f6f3; --panel:#ffffff; --ink:#15211c; --muted:#5d6b64; --line:#e2e0da;
+  --accent:#0f766e; --accent-soft:#d6ece8;
+  --b0:#0f766e; --b1:#5aa88f; --b2:#e0b252; --b3:#dd8243; --b4:#c4453b;
+  --warn:#b45309; --warn-bg:#fdf4e3;
+  --shadow:0 1px 2px rgba(16,32,27,.06),0 8px 28px rgba(16,32,27,.08);
+  --r:14px;
+}
+:root[data-theme="dark"]{
+  --bg:#0d1412; --panel:#141d1a; --ink:#e8efec; --muted:#93a39c; --line:#243330;
+  --accent:#4fd1c5; --accent-soft:#12302c;
+  --b0:#2dd4bf; --b1:#5aa88f; --b2:#e0b252; --b3:#e08a4d; --b4:#e4584c;
+  --warn:#fbbf24; --warn-bg:#2a2112;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.45);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0d1412; --panel:#141d1a; --ink:#e8efec; --muted:#93a39c; --line:#243330;
+    --accent:#4fd1c5; --accent-soft:#12302c;
+    --b0:#2dd4bf; --b1:#5aa88f; --b2:#e0b252; --b3:#e08a4d; --b4:#e4584c;
+    --warn:#fbbf24; --warn-bg:#2a2112;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.45);
   }
-  [data-theme="dark"] {
-    --surface:    #1e293b;
-    --surface-2:  #0f172a;
-    --text:       #e2e8f0;
-    --muted:      #94a3b8;
-    --border:     #334155;
-    --accent:     #3b82f6;
-    --accent-ink: #ffffff;
-    --shadow:     0 6px 24px rgba(0, 0, 0, .5);
-    --school:     #60a5fa;
-    --facility:   #fb7185;
-    --near:       #34d399;
-    --isolate:    #fbbf24;
-  }
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font:15px/1.55 "IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased; overflow:hidden;
+}
+h1,h2,h3{font-family:Fraunces,Georgia,serif; font-weight:600; letter-spacing:-.01em; margin:0}
+button{font:inherit; color:inherit; cursor:pointer}
 
-  * { box-sizing: border-box; }
-  html, body { height: 100%; margin: 0; overflow: hidden;
-    font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--text); }
-  #map { position: absolute; inset: 0; z-index: 0; background: var(--surface-2); }
-  .basemap { transition: opacity .35s ease; }   /* cross-fade between light/dark tiles */
-  .card { background: var(--surface); border: 1px solid var(--border);
-    border-radius: 14px; box-shadow: var(--shadow); }
-  button { font: inherit; cursor: pointer; }
+/* ---------- shell ---------- */
+#app{display:grid; grid-template-columns:400px 1fr; height:100vh}
+#map{height:100vh; width:100%; background:var(--bg)}
+.leaflet-container{font:inherit; background:var(--bg)}
+.basemap{transition:opacity .35s ease}
 
-  /* ---------- search ---------- */
-  #searchwrap { position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
-    width: min(460px, calc(100vw - 88px)); z-index: 1200; }
-  #searchcard { padding: 12px 14px; transition: box-shadow .2s; }
-  #searchcard.pulse { animation: pulse 1.2s ease 2; }
-  @keyframes pulse { 50% { box-shadow: 0 0 0 4px var(--accent); } }
-  #brand h1 { margin: 0 0 9px; font-size: 15px; font-weight: 650; letter-spacing: .2px; }
-  #search { width: 100%; border: 1px solid var(--border); border-radius: 10px;
-    padding: 10px 12px; font-size: 14px; outline: none;
-    background: var(--surface-2); color: var(--text); transition: border-color .15s; }
-  #search::placeholder { color: var(--muted); }
-  #search:focus { border-color: var(--accent); }
-  #suggest { list-style: none; margin: 6px 0 0; padding: 0; max-height: 240px; overflow-y: auto; }
-  #suggest li { padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; }
-  #suggest li:hover { background: var(--surface-2); }
-  #suggest small { color: var(--muted); display: block; margin-top: 1px; }
-  #quick { margin-top: 9px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  #quick > span { font-size: 12px; color: var(--muted); }
-  .qchip { font-size: 12px; border: 1px solid var(--border); background: var(--surface-2);
-    color: var(--text); border-radius: 999px; padding: 5px 11px; }
-  .qchip:hover { border-color: var(--accent); color: var(--accent); }
-  #badge { margin-top: 9px; font-size: 12px; color: var(--muted);
-    display: none; align-items: center; gap: 7px; }
-  #badge .swatch { width: 8px; height: 8px; border-radius: 50%; flex: none; }
-  .spin { width: 11px; height: 11px; border-radius: 50%; flex: none;
-    border: 2px solid var(--border); border-top-color: var(--accent); animation: spin .7s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
+/* ---------- panel ---------- */
+#panel{
+  background:var(--panel); border-right:1px solid var(--line);
+  display:flex; flex-direction:column; overflow:hidden; z-index:600;
+}
+#head{padding:20px 22px 14px; border-bottom:1px solid var(--line)}
+.brandrow{display:flex; align-items:baseline; justify-content:space-between; gap:10px}
+#brand{font-size:27px; line-height:1}
+#brand em{font-style:normal; color:var(--accent)}
+.tag{font-size:11.5px; color:var(--muted); letter-spacing:.08em; text-transform:uppercase}
+#sub{color:var(--muted); font-size:13.5px; margin-top:7px}
+#scroll{overflow-y:auto; padding:18px 22px 26px; flex:1; scrollbar-width:thin}
 
-  /* ---------- floating controls ---------- */
-  .iconbtn { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border);
-    background: var(--surface); color: var(--text); display: grid; place-items: center;
-    box-shadow: var(--shadow); padding: 0; }
-  .iconbtn:hover { border-color: var(--accent); color: var(--accent); }
-  #themebtn { position: absolute; top: 14px; right: 14px; z-index: 1200; }
+.section{margin-bottom:22px}
+.label{font-size:11px; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); margin-bottom:9px; font-weight:600}
 
-  #legend { position: absolute; left: 14px; bottom: 14px; z-index: 1100;
-    padding: 10px 12px; font-size: 12px; display: none; max-width: 220px; }
-  #legend .row { display: flex; align-items: center; gap: 7px; }
-  #legend .row + .row { margin-top: 5px; }
-  #legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
-  #legend i.sq { border-radius: 2px; }
-  #legendExtra:not(:empty) { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+select{
+  width:100%; padding:11px 13px; border-radius:10px; border:1px solid var(--line);
+  background:var(--bg); color:var(--ink); font:inherit; cursor:pointer;
+}
+select:focus{outline:2px solid var(--accent); outline-offset:1px}
 
-  /* ---------- chat ---------- */
-  #panel { position: absolute; right: 16px; bottom: 16px; z-index: 1150;
-    width: min(360px, calc(100vw - 32px)); max-height: calc(100vh - 32px); height: 520px;
-    display: flex; flex-direction: column; overflow: hidden;
-    transition: opacity .2s, transform .2s; }
-  #panel.hidden { opacity: 0; transform: translateY(12px) scale(.98); pointer-events: none; }
-  #phead { flex: none; padding: 11px 14px; background: var(--accent); color: var(--accent-ink);
-    display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  #phead b { font-size: 14px; } #phead span { display: block; font-size: 11px; opacity: .85; margin-top: 1px; }
-  #closechat { background: transparent; border: none; color: var(--accent-ink); opacity: .85;
-    padding: 2px; display: grid; place-items: center; border-radius: 6px; }
-  #closechat:hover { opacity: 1; background: rgba(255,255,255,.15); }
-  #msgs { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 12px; display: flex;
-    flex-direction: column; gap: 9px; background: var(--surface-2); }
-  .msg { max-width: 88%; padding: 9px 12px; border-radius: 13px; font-size: 13.5px; line-height: 1.5;
-    overflow-wrap: anywhere; }
-  .user { align-self: flex-end; background: var(--accent); color: var(--accent-ink); border-bottom-right-radius: 4px; }
-  .bot { align-self: flex-start; background: var(--surface); color: var(--text);
-    border: 1px solid var(--border); border-bottom-left-radius: 4px; }
-  .tag { display: block; width: fit-content; max-width: 100%; margin-top: 6px; font-size: 10.5px;
-    color: var(--accent); background: var(--surface-2); border: 1px solid var(--border);
-    border-radius: 6px; padding: 2px 7px; font-family: ui-monospace, monospace; }
-  #chips { flex: none; display: flex; flex-wrap: nowrap; gap: 6px; padding: 9px 12px 2px;
-    overflow-x: auto; background: var(--surface); scrollbar-width: thin; }
-  .chip { flex: none; white-space: nowrap; font-size: 12px; border: 1px solid var(--border);
-    background: var(--surface); color: var(--text); border-radius: 999px; padding: 5px 10px; }
-  .chip:hover { border-color: var(--accent); color: var(--accent); }
-  #inrow { flex: none; display: flex; gap: 8px; padding: 9px 12px 11px; background: var(--surface);
-    border-top: 1px solid var(--border); }
-  #q { flex: 1; min-width: 0; border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px;
-    font-size: 13.5px; outline: none; background: var(--surface-2); color: var(--text); }
-  #q:focus { border-color: var(--accent); }
-  #send { flex: none; border: none; background: var(--accent); color: var(--accent-ink);
-    border-radius: 10px; padding: 0 15px; font-size: 13.5px; }
-  #send:disabled { opacity: .45; cursor: default; }
+/* ---------- readout ---------- */
+#readout{
+  border:1px solid var(--line); border-radius:var(--r); padding:15px 16px;
+  background:linear-gradient(180deg,var(--accent-soft),transparent 70%);
+}
+#readout .hint{color:var(--muted); font-size:13px}
+.big{font-family:Fraunces,Georgia,serif; font-size:31px; line-height:1.08; font-weight:600}
+.big small{font-size:14px; font-family:"IBM Plex Sans",sans-serif; color:var(--muted); font-weight:400}
+.rowstat{display:flex; justify-content:space-between; gap:12px; padding:5px 0; font-size:13.5px; border-top:1px dashed var(--line)}
+.rowstat:first-of-type{border-top:0}
+.rowstat b{font-variant-numeric:tabular-nums; font-weight:600}
+.k{color:var(--muted)}
 
-  #fab { position: absolute; right: 16px; bottom: 16px; z-index: 1140; width: 52px; height: 52px;
-    border-radius: 50%; border: none; background: var(--accent); color: var(--accent-ink);
-    box-shadow: var(--shadow); display: none; place-items: center; }
-  #fab.show { display: grid; }
+/* ---------- stats ---------- */
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.stat{border:1px solid var(--line); border-radius:12px; padding:12px 13px; background:var(--bg)}
+.stat .n{font-family:Fraunces,Georgia,serif; font-size:22px; font-weight:600; font-variant-numeric:tabular-nums}
+.stat .t{font-size:11.5px; color:var(--muted); margin-top:3px; line-height:1.35}
 
-  @media (max-height: 700px) {
-    #panel { height: calc(100vh - 32px); }
-    #phead { padding: 8px 12px; } #phead span { display: none; }
-  }
-  @media (max-width: 640px) {
-    #panel { left: 12px; right: 12px; width: auto; height: 48vh; bottom: 12px; }
-    #legend { display: none !important; }
-  }
+/* ---------- banner ---------- */
+.banner{
+  border:1px solid color-mix(in srgb,var(--warn) 35%,transparent); background:var(--warn-bg);
+  border-radius:12px; padding:12px 14px; font-size:12.8px; line-height:1.5;
+}
+.banner b{color:var(--warn)}
+
+/* ---------- legend / formula ---------- */
+.legrow{display:flex; align-items:center; gap:9px; font-size:13px; padding:3px 0}
+.sw{width:15px; height:15px; border-radius:4px; flex:none}
+#formula{
+  margin-top:10px; font-size:12.4px; color:var(--muted); border:1px dashed var(--line);
+  border-radius:10px; padding:10px 12px; background:var(--bg);
+}
+#formula code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--ink); font-size:12px}
+
+/* ---------- shortlist ---------- */
+.site{
+  display:grid; grid-template-columns:26px 1fr auto; gap:11px; align-items:center;
+  width:100%; text-align:left; padding:10px 11px; border:1px solid var(--line);
+  border-radius:11px; background:var(--bg); margin-bottom:7px; transition:.15s;
+}
+.site:hover{border-color:var(--accent); transform:translateX(2px)}
+.rank{
+  width:26px; height:26px; border-radius:8px; background:var(--accent); color:#fff;
+  display:grid; place-items:center; font-size:12.5px; font-weight:600;
+}
+:root[data-theme="dark"] .rank{color:#06201c}
+.site .m{font-size:12px; color:var(--muted)}
+.site .c{font-weight:600; font-variant-numeric:tabular-nums; font-size:14px}
+
+/* ---------- landing ---------- */
+#landing{
+  position:fixed; inset:0; z-index:1500; background:var(--bg);
+  display:grid; place-items:center; padding:30px; overflow-y:auto;
+}
+#landing.hide{display:none}
+.lwrap{max-width:720px; width:100%}
+.eyebrow{font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); font-weight:600}
+#landing h1{font-size:clamp(38px,6.4vw,62px); line-height:1.02; margin:15px 0 0; letter-spacing:-.025em}
+#landing h1 em{font-style:italic; color:var(--accent)}
+.lead{font-size:17.5px; color:var(--muted); margin:17px 0 0; max-width:56ch; line-height:1.6}
+.facts{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:30px 0 0}
+.fact{border:1px solid var(--line); border-radius:var(--r); padding:15px 16px; background:var(--panel)}
+.fact .n{font-family:Fraunces,Georgia,serif; font-size:30px; font-weight:600; line-height:1}
+.fact .t{font-size:12.5px; color:var(--muted); margin-top:7px; line-height:1.4}
+.cta{display:flex; gap:11px; margin-top:28px; flex-wrap:wrap; align-items:center}
+.btn{
+  background:var(--accent); color:#fff; border:0; padding:13px 22px; border-radius:11px;
+  font-weight:600; font-size:15px; box-shadow:var(--shadow); transition:.15s;
+}
+:root[data-theme="dark"] .btn:not(.ghost){color:#06201c}
+.btn:hover{transform:translateY(-1px)}
+.btn.ghost{background:transparent; color:var(--ink); border:1px solid var(--line); box-shadow:none}
+.btn.ghost:hover{border-color:var(--accent)}
+.src{margin-top:26px; font-size:12px; color:var(--muted); line-height:1.65}
+.src a{color:inherit}
+
+/* ---------- misc ---------- */
+#themebtn{
+  background:transparent; border:1px solid var(--line); border-radius:9px;
+  width:32px; height:32px; display:grid; place-items:center; flex:none;
+}
+#tip{
+  position:absolute; z-index:1200; pointer-events:none; background:var(--panel);
+  border:1px solid var(--line); border-radius:9px; padding:6px 9px; font-size:12px;
+  box-shadow:var(--shadow); opacity:0; transition:opacity .12s;
+}
+#loading{
+  position:absolute; inset:0; display:grid; place-items:center; z-index:900;
+  background:color-mix(in srgb,var(--bg) 82%,transparent); font-size:14px; color:var(--muted);
+}
+#loading.hide{display:none}
+.spin{
+  width:17px;height:17px;border:2px solid var(--line);border-top-color:var(--accent);
+  border-radius:50%;animation:sp .7s linear infinite; display:inline-block; vertical-align:-3px; margin-right:8px;
+}
+@keyframes sp{to{transform:rotate(360deg)}}
+.foot{font-size:11.5px; color:var(--muted); line-height:1.6; border-top:1px solid var(--line); padding-top:14px}
+.foot a{color:inherit}
+
+@media (max-width:900px){
+  body{overflow:auto}
+  #app{grid-template-columns:1fr; height:auto}
+  #panel{height:auto; max-height:none; border-right:0; border-bottom:1px solid var(--line)}
+  #scroll{overflow:visible}
+  #map{height:62vh; position:sticky; top:0}
+  .facts{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
-<div id="map"></div>
 
-<div id="searchwrap">
-  <div id="searchcard" class="card">
-    <div id="brand"><h1>🗺️ GeoMind AI</h1></div>
-    <input id="search" placeholder="Search a district, area or neighbourhood…" autocomplete="off">
-    <ul id="suggest"></ul>
-    <div id="quick"><span>Featured:</span></div>
-    <div id="badge"><span class="swatch"></span><span id="badgetext"></span></div>
+<!-- ======================= LANDING ======================= -->
+<div id="landing">
+  <div class="lwrap">
+    <p class="eyebrow">Pakistan · school access · open data</p>
+    <h1>Where should the <em>next school</em> go?</h1>
+    <p class="lead">
+      UNESCO finds that girls aged 10–12 who walk 45–60 minutes to school are 15% less likely
+      to attend than those within 15 minutes. <strong>Rasta</strong> turns that finding into a map:
+      it shows where children live beyond a 15-minute walk of a school, and ranks the sites an
+      NGO should field-verify first.
+    </p>
+
+    <div class="facts">
+      <div class="fact"><div class="n">26.2M</div><div class="t">children out of school in Pakistan — the world's second-highest</div></div>
+      <div class="fact"><div class="n">15 min</div><div class="t">the walking threshold above which attendance starts to fall</div></div>
+      <div class="fact"><div class="n">~3%</div><div class="t">of Sindh's schools that exist in open map data at all</div></div>
+    </div>
+
+    <div class="cta">
+      <button class="btn" id="enter">Open the map</button>
+      <button class="btn ghost" id="themebtn2">Switch theme</button>
+    </div>
+
+    <p class="src">
+      That last number is the catch, and we show it rather than hide it. We tested three independent
+      sources for Sindh — OpenStreetMap (1,571 schools), UNICEF Giga (1,557, and OSM-derived) — against
+      roughly 48,000 schools on the official count. So Rasta reports distance to the nearest
+      <em>mapped</em> school, and every output is a list of places to <strong>field-verify</strong>,
+      never a confirmed gap.<br><br>
+      Data: UNICEF Giga (ODbL) · Kontur population (CC-BY) · Meta Relative Wealth Index (CC-BY-NC) ·
+      OCHA administrative boundaries (CC-BY-IGO) · basemap © Esri.
+    </p>
   </div>
 </div>
 
-<button id="themebtn" class="iconbtn" title="Toggle dark mode" aria-label="Toggle dark mode"></button>
+<!-- ======================= APP ======================= -->
+<div id="app">
+  <aside id="panel">
+    <div id="head">
+      <div class="brandrow">
+        <h1 id="brand">Ras<em>ta</em></h1>
+        <button id="themebtn" title="Switch theme" aria-label="Switch theme">◐</button>
+      </div>
+      <p id="sub">Walking access to school, district by district.</p>
+    </div>
 
-<div id="legend" class="card">
-  <div class="row"><i style="background:var(--school)"></i> Schools</div>
-  <div class="row"><i style="background:var(--facility)"></i> Medical facilities</div>
-  <div class="row" id="pinlegend" style="display:none"><i style="background:var(--accent)"></i> Your pin</div>
-  <div id="legendExtra"></div>
-</div>
+    <div id="scroll">
+      <div class="section">
+        <div class="label">District</div>
+        <select id="pick" aria-label="Choose a district"></select>
+      </div>
 
-<div id="panel" class="card">
-  <div id="phead">
-    <div><b>Ask GeoMind</b><span>Plain English → map answer</span></div>
-    <button id="closechat" title="Hide chat" aria-label="Hide chat">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-        stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-    </button>
+      <div class="section">
+        <div class="label">Put a centre here</div>
+        <div id="readout">
+          <p class="hint" id="hint">Move the cursor over the map. The circle is one 15-minute walk.</p>
+          <div id="live" style="display:none">
+            <div class="big"><span id="reach">—</span> <small>children reached</small></div>
+            <div style="margin-top:11px">
+              <div class="rowstat"><span class="k">Walk to nearest school</span><b id="walkmin">—</b></div>
+              <div class="rowstat"><span class="k">People in this cell</span><b id="cellpop">—</b></div>
+              <div class="rowstat"><span class="k">Relative wealth</span><b id="cellrwi">—</b></div>
+            </div>
+          </div>
+        </div>
+        <div id="formula">
+          A catchment here is a circle because the model is closed-form:<br>
+          <code id="formulatext">15 min × 4 km/h ÷ 1.3 detour = 769 m</code>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="label">District totals</div>
+        <div class="grid2">
+          <div class="stat"><div class="n" id="s-children">—</div><div class="t">school-age children (estimated)</div></div>
+          <div class="stat"><div class="n" id="s-under">—</div><div class="t">beyond a 15-minute walk</div></div>
+          <div class="stat"><div class="n" id="s-schools">—</div><div class="t">schools in open data</div></div>
+          <div class="stat"><div class="n" id="s-hex">—</div><div class="t">population cells analysed</div></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="banner" id="conf">—</div>
+      </div>
+
+      <div class="section">
+        <div class="label">Sites to field-verify</div>
+        <div id="sites"></div>
+      </div>
+
+      <div class="section">
+        <div class="label">Walk to nearest mapped school</div>
+        <div id="legend"></div>
+      </div>
+
+      <p class="foot">
+        Distances are straight-line estimates inflated by a detour factor, not routed along roads.
+        Child counts apply a national age share to gridded population, so they are estimates.<br><br>
+        UNICEF Giga (ODbL) · Kontur (CC-BY) · Meta RWI (CC-BY-NC) · OCHA COD (CC-BY-IGO) ·
+        basemap © Esri · <a href="https://github.com/arahmanmdmajid/rasta-school-access">source</a>
+      </p>
+    </div>
+  </aside>
+
+  <div style="position:relative">
+    <div id="map"></div>
+    <div id="loading"><span><span class="spin"></span>Loading district…</span></div>
+    <div id="tip"></div>
   </div>
-  <div id="msgs"></div>
-  <div id="chips"></div>
-  <div id="inrow">
-    <input id="q" placeholder="Ask about schools & healthcare…" autocomplete="off">
-    <button id="send">Send</button>
-  </div>
 </div>
-
-<button id="fab" title="Open chat" aria-label="Open chat">
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-    stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.9 8.9 0 0 1-4-.9L3 21l1.9-4.9A8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg>
-</button>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
-// ===================================================================
-// GeoMind AI — web page (display only).
-//
-// All data loading, AI and GIS analysis happen in the Python API (api/app.py).
-// This script only: shows the map, sends questions to the API, and draws what comes back.
-// ===================================================================
-const LOCAL = ["127.0.0.1", "localhost"].includes(location.hostname);
-const API_URL = LOCAL ? "http://127.0.0.1:7860" : "https://rasta-api.onrender.com";   // Python API (Render)
-
-const TILES = {
-  light: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
-  dark:  "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
-};
-
-let AREA = null;          // the area payload from POST /area
-let REF_POINT = null;     // [lon, lat] of the user's map pin
-let lastDraw = null;      // last answer's map layers, redrawn after a theme change
+// Rasta — static page. Every district is a precomputed bundle, so the map, the hover
+// catchment and the shortlist need no server at all: nothing here can be broken by a
+// sleeping backend.
 
 const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-const isDark = () => document.documentElement.getAttribute("data-theme") === "dark";
-const colors = () => ({ school: css("--school"), facility: css("--facility"), near: css("--near"),
-  isolate: css("--isolate"), accent: css("--accent"), ring: isDark() ? "#0b1220" : "#ffffff" });
+const fmt = n => n == null || !isFinite(n) ? "—" : Math.round(n).toLocaleString();
+const isDark = () => (document.documentElement.dataset.theme || "")
+  ? document.documentElement.dataset.theme === "dark"
+  : matchMedia("(prefers-color-scheme: dark)").matches;
 
-// ---- talking to the Python API ----
-async function api(path, body, timeoutMs = 60000) {
-  const res = await fetch(API_URL + path, {
-    method: body ? "POST" : "GET",
-    headers: body ? { "Content-Type": "application/json" } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-    signal: AbortSignal.timeout(timeoutMs),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.detail || `The analysis server returned ${res.status}.`);
-  return data;
-}
-
-// ===================================================================
-// MAP + THEME
-// ===================================================================
-const map = L.map("map", { zoomControl: true }).setView([25, 55], 4);
-const basemaps = {};
-function setBasemap(theme) {
-  for (const t of ["light", "dark"]) {
-    if (!basemaps[t]) {
-      basemaps[t] = L.tileLayer(TILES[t], { attribution: "Tiles © Esri", maxNativeZoom: 16, maxZoom: 19,
-        opacity: 0, className: "basemap" }).addTo(map);
-      basemaps[t].bringToBack();
-    }
+/* ---------------- theme ---------------- */
+function setTheme(t){
+  document.documentElement.dataset.theme = t;
+  try{ localStorage.setItem("rasta-theme", t); }catch(e){}
+  if (window.basemaps){
+    basemaps.light.setOpacity(t === "dark" ? 0 : 1);
+    basemaps.dark.setOpacity(t === "dark" ? 1 : 0);
   }
-  basemaps.light.setOpacity(theme === "light" ? 1 : 0);
-  basemaps.dark.setOpacity(theme === "dark" ? 1 : 0);
+  if (window.BUNDLE) { paintChoropleth(); paintLegend(); }
 }
-const baseLayer = L.layerGroup().addTo(map);
-const highlight = L.layerGroup().addTo(map);
-const pinLayer = L.layerGroup().addTo(map);
-const dot = c => ({ radius: 6, color: colors().ring, weight: 1.5, fillColor: c, fillOpacity: 1, bubblingMouseEvents: false });
-
-const themeBtn = document.getElementById("themebtn");
-const ICON_MOON = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>`;
-const ICON_SUN = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>`;
-function applyTheme(t) {
-  document.documentElement.setAttribute("data-theme", t);
-  try { localStorage.setItem("rasta-theme", t); } catch (e) {}
-  themeBtn.innerHTML = t === "dark" ? ICON_SUN : ICON_MOON;
-  setBasemap(t);
-  if (AREA) { drawArea(false); if (lastDraw) renderDraw(lastDraw, false); }   // restyle only
-}
-themeBtn.onclick = () => applyTheme(isDark() ? "light" : "dark");
-
-const panel = document.getElementById("panel"), fab = document.getElementById("fab");
-function showChat(on) { panel.classList.toggle("hidden", !on); fab.classList.toggle("show", !on); }
-document.getElementById("closechat").onclick = () => showChat(false);
-fab.onclick = () => showChat(true);
-
-map.on("click", e => {
-  if (!AREA) return;
-  REF_POINT = [e.latlng.lng, e.latlng.lat];
-  drawPin();
-  addMsg("Pin set. Ask things like “schools within 1 km of this location”.", "bot");
-});
-function drawPin() {
-  pinLayer.clearLayers();
-  document.getElementById("pinlegend").style.display = REF_POINT ? "flex" : "none";
-  if (!REF_POINT) return;
-  L.circleMarker([REF_POINT[1], REF_POINT[0]], { radius: 8, color: colors().ring, weight: 3,
-    fillColor: colors().accent, fillOpacity: 1, bubblingMouseEvents: false }).bindTooltip("Your pin").addTo(pinLayer);
-}
-
-// ===================================================================
-// SEARCH (Photon suggestions stay in the browser so typing feels instant)
-// ===================================================================
-const searchEl = document.getElementById("search"), suggestEl = document.getElementById("suggest");
-let timer = null, results = [];
-searchEl.addEventListener("input", () => {
-  clearTimeout(timer);
-  const q = searchEl.value.trim();
-  if (q.length < 3) { suggestEl.innerHTML = ""; return; }
-  timer = setTimeout(() => lookup(q), 300);
-});
-async function lookup(q) {
-  try {
-    const d = await (await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=12`)).json();
-    const seen = new Set();
-    results = (d.features || [])
-      .sort((a, b) => (b.properties.extent ? 1 : 0) - (a.properties.extent ? 1 : 0))
-      .filter(f => { const p = f.properties, k = [p.name, p.city, p.state, p.country].join("|").toLowerCase();
-                     if (seen.has(k)) return false; seen.add(k); return true; })
-      .slice(0, 6);
-    suggestEl.innerHTML = "";
-    results.forEach((f, i) => {
-      const p = f.properties, li = document.createElement("li");
-      li.innerHTML = `${p.name || "(unnamed)"}<small>${[p.city, p.state, p.country].filter(Boolean).join(", ")}</small>`;
-      li.onclick = () => choose(i);
-      suggestEl.appendChild(li);
-    });
-  } catch (e) { console.warn("search failed", e); }
-}
-function pulseSearch() {
-  const c = document.getElementById("searchcard");
-  c.classList.remove("pulse"); void c.offsetWidth; c.classList.add("pulse");
-  searchEl.focus();
-}
-
-// ===================================================================
-// LOADING AN AREA
-// ===================================================================
-async function loadArea(body, label) {
-  setBadge("loading", body.featured ? "Loading…" : "Fetching live map data (can take up to 25 s)…");
-  try {
-    showArea(await api("/area", body));
-    searchEl.value = label || AREA.place;
-  } catch (e) {
-    setBadge("warn", e.message);
-  }
-}
-function choose(i) {
-  const f = results[i]; if (!f) return;
-  suggestEl.innerHTML = "";
-  loadArea({ photon: { properties: f.properties, lonlat: f.geometry.coordinates } }, f.properties.name);
-}
-
-function showArea(payload) {
-  AREA = payload; REF_POINT = null; lastDraw = null;
-  highlight.clearLayers(); setLegendExtra([]);
-  drawArea(true);
-  document.getElementById("legend").style.display = "block";
-  const c = payload.counts;
-  setBadge(payload.sparse ? "warn" : payload.source === "Overture extract" ? "good" : "live",
-    `${payload.source} · ${c.schools} schools · ${c.facilities} medical facilities`);
-  addMsg(payload.message, "bot");
-  renderChips(payload.suggestions);
-  showChat(true);
-}
-
-function drawArea(fit) {
-  const C = colors();
-  baseLayer.clearLayers();
-  const b = L.geoJSON(AREA.boundary, { style: { color: C.accent, weight: 2, fill: true, fillOpacity: .05 }, interactive: false }).addTo(baseLayer);
-  L.geoJSON(AREA.facilities, { pointToLayer: (f, ll) => L.circleMarker(ll, dot(C.facility)).bindPopup(f.properties.name || "Medical facility") }).addTo(baseLayer);
-  L.geoJSON(AREA.schools, { pointToLayer: (f, ll) => L.circleMarker(ll, dot(C.school)).bindPopup(f.properties.name || "School") }).addTo(baseLayer);
-  drawPin();
-  if (fit && map.getSize().x) { try { map.flyToBounds(b.getBounds(), { padding: [60, 60], duration: .8 }); } catch (e) {} }
-}
-
-function setBadge(kind, text) {
-  const el = document.getElementById("badge");
-  el.style.display = "flex";
-  const sw = el.querySelector(".swatch, .spin");
-  if (kind === "loading") { sw.className = "spin"; sw.style.background = ""; }
-  else { sw.className = "swatch"; sw.style.background = kind === "good" ? "var(--near)" : kind === "live" ? "var(--isolate)" : "var(--facility)"; }
-  document.getElementById("badgetext").textContent = text;
-}
-
-// ===================================================================
-// DRAWING AN ANSWER — each layer has a role; the page only picks colours
-// ===================================================================
-function setLegendExtra(items) {
-  const el = document.getElementById("legendExtra");
-  el.innerHTML = "";
-  const C = colors();
-  for (const it of items) {
-    const color = it.color || (it.role === "gap" ? C.isolate : "transparent");
-    const row = document.createElement("div"); row.className = "row";
-    row.innerHTML = `<i class="sq" style="background:${color}"></i> ${it.label}`;
-    el.appendChild(row);
-  }
-}
-
-function renderDraw(d, fit) {
-  const C = colors();
-  highlight.clearLayers();
-  const lineColor = rel => rel === "within" ? C.near : rel === "beyond" ? C.isolate : C.accent;
-  const hitColor = { hit_within: C.near, hit_beyond: C.isolate, hit_all: C.accent, hit_gap: C.isolate, worst: C.isolate };
-  const bounds = [];
-
-  for (const layer of d.layers) {
-    const fc = layer.geojson, role = layer.role;
-    for (const f of fc.features) {
-      const g = f.geometry, p = f.properties || {};
-      if (role === "buffer" || role === "ref_circle") {
-        L.circle([g.coordinates[1], g.coordinates[0]], { radius: p.radius, interactive: false,
-          color: role === "buffer" ? C.near : C.accent, weight: role === "buffer" ? 1 : 1.5,
-          dashArray: role === "ref_circle" ? "6 5" : null, fillOpacity: role === "buffer" ? .05 : .04 }).addTo(highlight);
-      } else if (role === "ref_point") {
-        L.circleMarker([g.coordinates[1], g.coordinates[0]], { radius: 7, color: C.ring, weight: 2, fillColor: C.accent, fillOpacity: 1 })
-          .bindTooltip(p.label || "").addTo(highlight);
-        bounds.push([g.coordinates[1], g.coordinates[0]]);
-      } else if (hitColor[role]) {
-        const col = hitColor[role];
-        L.circleMarker([g.coordinates[1], g.coordinates[0]], { radius: role === "worst" ? 10 : 9, color: col, weight: 3,
-          fillColor: role === "hit_gap" ? C.school : col, fillOpacity: .9, bubblingMouseEvents: false })
-          .bindPopup(p.label || "").addTo(highlight);
-        bounds.push([g.coordinates[1], g.coordinates[0]]);
-      } else if (role === "line") {
-        L.polyline(g.coordinates.map(c => [c[1], c[0]]), { color: lineColor(p.relation || layer.relation),
-          weight: 2, dashArray: "5 5", interactive: false }).addTo(highlight);
-      }
-    }
-    if (role === "gap") {
-      L.geoJSON(fc, { style: { stroke: false, fillColor: C.isolate, fillOpacity: .35 }, interactive: false }).addTo(highlight);
-    } else if (role === "grid") {
-      L.geoJSON(fc, { style: f => ({ stroke: false, fillColor: layer.ramp[f.properties.cls], fillOpacity: .5 }), interactive: false }).addTo(highlight);
-    }
-  }
-  setLegendExtra(d.legend || []);
-
-  // Zoom to the answer. A failed animation (e.g. a hidden tab with a zero-size map) must never hide the answer.
-  if (!fit || !map.getSize().x) return;
-  try {
-    if (d.fit === "results" && bounds.length > 1) map.flyToBounds(L.latLngBounds(bounds).pad(0.3), { duration: .8 });
-    else if (d.fit === "results" && bounds.length === 1) map.flyTo(bounds[0], 16, { duration: .8 });
-    else map.flyToBounds(L.geoJSON(AREA.boundary).getBounds(), { padding: [60, 60], duration: .8 });
-  } catch (e) { console.warn("map zoom skipped:", e); }
-}
-
-// ===================================================================
-// CHAT
-// ===================================================================
-const msgs = document.getElementById("msgs"), qEl = document.getElementById("q"), sendEl = document.getElementById("send");
-const chipsEl = document.getElementById("chips");
-function addMsg(text, who, tag) {
-  const d = document.createElement("div"); d.className = "msg " + who; d.textContent = text;
-  if (tag) { const t = document.createElement("span"); t.className = "tag"; t.textContent = tag; d.appendChild(t); }
-  msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight;
-}
-function renderChips(list) {
-  chipsEl.innerHTML = "";
-  (list || []).forEach(text => {
-    const c = document.createElement("button"); c.className = "chip"; c.textContent = text;
-    c.onclick = () => ask(text); chipsEl.appendChild(c);
-  });
-}
-function getLocation() {
-  return new Promise((res, rej) => {
-    if (!navigator.geolocation) return rej(new Error("unsupported"));
-    navigator.geolocation.getCurrentPosition(res, rej, { timeout: 8000, maximumAge: 60000 });
-  });
-}
-
-let busy = false;
-async function ask(question) {
-  question = (question || "").trim();
-  if (!question || busy) return;
-  showChat(true);
-  addMsg(question, "user"); qEl.value = "";
-  busy = true; sendEl.disabled = true;
-  const body = { question, area_id: AREA ? AREA.area_id : null, pin: REF_POINT };
-  try {
-    let r = await api("/ask", body);
-    if (r.needs_location) {                       // the API needs the user's position for "near me"
-      addMsg("Getting your location…", "bot");
-      try { const pos = await getLocation(); body.me = [pos.coords.longitude, pos.coords.latitude]; }
-      catch (e) { body.me_error = "denied"; }
-      r = await api("/ask", body);
-    }
-    if (r.area) showArea(r.area);                 // the API moved to another area
-    if (r.draw) { lastDraw = r.draw; renderDraw(r.draw, true); }
-    const how = r.router === "keywords" ? " · keyword fallback" : "";
-    addMsg(r.answer, "bot", r.tag ? r.tag + how : null);
-    if (r.followups) renderChips(r.followups);
-    if (r.needs_area) pulseSearch();
-  } catch (e) {
-    addMsg(e.message.includes("timed out") || e.name === "TimeoutError"
-      ? "The analysis server took too long. It may be waking up — try again in a moment."
-      : e.message, "bot");
-  } finally { busy = false; sendEl.disabled = false; }
-}
-sendEl.onclick = () => ask(qEl.value);
-qEl.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); ask(qEl.value); } });
-
-// ===================================================================
-// STARTUP
-// ===================================================================
 let saved = null;
-try { saved = localStorage.getItem("rasta-theme"); } catch (e) {}
-applyTheme(saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
-addMsg("Search for a location above — or tap a featured district — then ask about its schools and healthcare.", "bot");
-renderChips(["Which schools and clinics are near me?", "Which areas have poor access to healthcare?", "Which school has the worst access to healthcare?"]);
+try{ saved = localStorage.getItem("rasta-theme"); }catch(e){}
+setTheme(saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+const toggle = () => setTheme(isDark() ? "light" : "dark");
+document.getElementById("themebtn").onclick = toggle;
+document.getElementById("themebtn2").onclick = toggle;
 
-(async () => {
-  const slow = setTimeout(() => setBadge("loading", "Waking the analysis server…"), 1500);
-  try {
-    const featured = await api("/featured", null, 90000);
-    clearTimeout(slow);
-    if (!AREA) document.getElementById("badge").style.display = "none";
-    const quick = document.getElementById("quick");
-    for (const f of featured) {
-      const b = document.createElement("button");
-      b.className = "qchip"; b.textContent = f.name;
-      b.onclick = () => { suggestEl.innerHTML = ""; loadArea({ featured: f.key }, f.name); };
-      quick.appendChild(b);
-    }
-  } catch (e) {
-    clearTimeout(slow);
-    setBadge("warn", "The analysis server is unavailable right now. Please try again shortly.");
+/* ---------------- map ---------------- */
+const TILES = {
+  light:"https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+  dark :"https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+};
+const map = L.map("map", { zoomControl:true, preferCanvas:false }).setView([25.6, 68.5], 7);
+const opt = { attribution:"Tiles &copy; Esri &middot; Schools &copy; UNICEF Giga / OpenStreetMap contributors (ODbL)", maxNativeZoom:16, maxZoom:18, opacity:0, className:"basemap" };
+const basemaps = {
+  light: L.tileLayer(TILES.light, opt).addTo(map),
+  dark : L.tileLayer(TILES.dark , opt).addTo(map),
+};
+window.basemaps = basemaps;
+basemaps.light.setOpacity(isDark() ? 0 : 1);
+basemaps.dark.setOpacity(isDark() ? 1 : 0);
+
+const choro  = L.layerGroup().addTo(map);
+const schoolLayer = L.layerGroup().addTo(map);
+const marks  = L.layerGroup().addTo(map);
+
+// The catchment circle is created once and only moved. Rebuilding it per frame is what
+// makes this kind of hover feel sticky.
+const ring = L.circle([0,0], { radius:769, interactive:false, color:css("--accent"), weight:2, fillColor:css("--accent"), fillOpacity:.1 });
+
+/* ---------------- state ---------------- */
+let BUNDLE = null, IDX = null;
+let CELLS = null;          // parallel arrays, straight from the bundle
+let XY = null;             // cell centres in local metres
+let BUCKETS = null;        // integer-keyed spatial index
+const BUCKET_M = 1000;
+let kx = 1, ky = 110540, lat0 = 25;
+
+const bandColors = () => [css("--b0"),css("--b1"),css("--b2"),css("--b3"),css("--b4")];
+
+/* ---------------- spatial index ---------------- */
+function buildIndex(){
+  const n = CELLS.lon.length;
+  lat0 = CELLS.lat.reduce((a,b)=>a+b,0)/n;
+  kx = 111320 * Math.cos(lat0*Math.PI/180);
+  ky = 110540;
+  XY = { x:new Float64Array(n), y:new Float64Array(n) };
+  BUCKETS = new Map();
+  for (let i=0;i<n;i++){
+    const x = CELLS.lon[i]*kx, y = CELLS.lat[i]*ky;
+    XY.x[i] = x; XY.y[i] = y;
+    const k = (Math.floor(x/BUCKET_M)*100000) + Math.floor(y/BUCKET_M);
+    let arr = BUCKETS.get(k);
+    if (!arr) BUCKETS.set(k, arr = []);
+    arr.push(i);
   }
+}
+function candidates(x, y, rings){
+  const bx = Math.floor(x/BUCKET_M), by = Math.floor(y/BUCKET_M), out = [];
+  for (let dx=-rings; dx<=rings; dx++)
+    for (let dy=-rings; dy<=rings; dy++){
+      const arr = BUCKETS.get(((bx+dx)*100000) + (by+dy));
+      if (arr) out.push(...arr);
+    }
+  return out;
+}
+// For a regular hex tiling the containing hexagon is the one whose centre is nearest,
+// so this is exact, not an approximation — and needs no point-in-polygon test.
+function nearestCell(x, y){
+  let best = -1, bestD = Infinity;
+  for (const i of candidates(x, y, 1)){
+    const d = (XY.x[i]-x)**2 + (XY.y[i]-y)**2;
+    if (d < bestD){ bestD = d; best = i; }
+  }
+  return best;
+}
+function childrenReached(x, y){
+  const r = BUNDLE.params.radius_m, r2 = r*r, thr = BUNDLE.params.threshold_min;
+  let sum = 0;
+  for (const i of candidates(x, y, Math.ceil(r/BUCKET_M)+1)){
+    if (CELLS.min[i] <= thr) continue;          // already within a 15-minute walk
+    if ((XY.x[i]-x)**2 + (XY.y[i]-y)**2 <= r2) sum += CELLS.ch[i];
+  }
+  return sum;
+}
+
+/* ---------------- hover ---------------- */
+let pending = null, raf = 0;
+map.on("mousemove", e => { pending = e.latlng; if (!raf) raf = requestAnimationFrame(flush); });
+map.on("mouseout", () => { document.getElementById("live").style.display="none"; document.getElementById("hint").style.display=""; });
+map.on("click", e => { pending = e.latlng; flush(); });   // touch and keyboard users
+
+function flush(){
+  raf = 0;
+  if (!pending || !CELLS) return;
+  const ll = pending;
+  ring.setLatLng(ll);
+  if (!map.hasLayer(ring)) ring.addTo(map);
+
+  const x = ll.lng*kx, y = ll.lat*ky;
+  const i = nearestCell(x, y);
+  const reached = childrenReached(x, y);
+
+  document.getElementById("hint").style.display = "none";
+  document.getElementById("live").style.display = "";
+  document.getElementById("reach").textContent  = fmt(reached);
+  const noSupply = BUNDLE.params.no_supply_min || 999;
+  document.getElementById("walkmin").textContent =
+    i < 0 ? "—"
+    : CELLS.min[i] >= noSupply ? "no mapped school"
+    : CELLS.min[i].toFixed(0) + " min";
+  document.getElementById("cellpop").textContent = i < 0 ? "—" : fmt(CELLS.pop[i]);
+  const rwi = i < 0 ? null : CELLS.rwi[i];
+  document.getElementById("cellrwi").textContent = rwi == null ? "—"
+    : (rwi < -0.4 ? "poorer" : rwi > 0.2 ? "better off" : "mid") + " (" + rwi.toFixed(2) + ")";
+}
+
+/* ---------------- render ---------------- */
+function paintChoropleth(){
+  choro.clearLayers();
+  const cols = bandColors();
+  L.geoJSON(BUNDLE.render, {
+    // Kept translucent on purpose: the basemap underneath is how an officer recognises
+    // the place they are looking at, and a district with one mapped school would
+    // otherwise be an opaque sheet of a single colour.
+    style: f => ({
+      stroke:false, fillColor: cols[Math.min(f.properties.cls, 4)] || cols[4],
+      fillOpacity: isDark() ? .42 : .34,
+    }),
+    interactive:false,
+  }).addTo(choro);
+}
+function paintSchools(){
+  schoolLayer.clearLayers();
+  L.geoJSON(BUNDLE.schools, {
+    // interactive:false matters: interactive markers swallow mousemove and punch dead
+    // spots in the hover readout.
+    pointToLayer: (f, ll) => L.circleMarker(ll, {
+      radius:3.5, color:"#fff", weight:1, fillColor:css("--ink"), fillOpacity:.85, interactive:false,
+    }),
+  }).addTo(schoolLayer);
+}
+function paintLegend(){
+  const cols = bandColors(), b = BUNDLE.params.bands_min;
+  const labels = [`under ${b[0]} min`, `${b[0]}–${b[1]} min`, `${b[1]}–${b[2]} min`, `${b[2]}–${b[3]} min`, `over ${b[3]} min`];
+  document.getElementById("legend").innerHTML = labels.map((t,i) =>
+    `<div class="legrow"><span class="sw" style="background:${cols[i]}"></span>${t}</div>`).join("")
+    + `<div class="legrow" style="margin-top:6px"><span class="sw" style="background:var(--ink);border-radius:50%;width:9px;height:9px;margin-left:3px"></span>mapped school</div>`;
+}
+function paintSites(){
+  const el = document.getElementById("sites");
+  if (!BUNDLE.shortlist.length){ el.innerHTML = `<p class="hint">No underserved cells in this district.</p>`; return; }
+  el.innerHTML = BUNDLE.shortlist.map((s,i) =>
+    `<button class="site" data-i="${i}">
+       <span class="rank">${i+1}</span>
+       <span><span class="c">${fmt(s.children_reached)}</span> children<br>
+         <span class="m">${s.walk_min_to_nearest.toFixed(0)} min to nearest mapped school</span></span>
+       <span class="m">▸</span>
+     </button>`).join("");
+  marks.clearLayers();
+  BUNDLE.shortlist.forEach((s,i) => {
+    L.marker([s.lat, s.lon], { icon: L.divIcon({
+      className:"", iconSize:[22,22],
+      html:`<div style="width:22px;height:22px;border-radius:7px;background:${css("--accent")};color:${isDark()?"#06201c":"#fff"};display:grid;place-items:center;font:600 12px 'IBM Plex Sans',sans-serif;box-shadow:0 2px 8px rgba(0,0,0,.3)">${i+1}</div>`,
+    })}).addTo(marks);
+  });
+  el.querySelectorAll(".site").forEach(b => b.onclick = () => {
+    const s = BUNDLE.shortlist[+b.dataset.i];
+    map.flyTo([s.lat, s.lon], 14, { duration:.7 });
+  });
+}
+
+function paintStats(){
+  const t = BUNDLE.totals, c = BUNDLE.confidence, p = BUNDLE.params;
+  document.getElementById("s-children").textContent = fmt(t.children_est);
+  document.getElementById("s-under").textContent    = fmt(t.children_underserved_est);
+  document.getElementById("s-schools").textContent  = fmt(c.mapped);
+  document.getElementById("s-hex").textContent      = fmt(t.hexes);
+  document.getElementById("sub").textContent = `${BUNDLE.name}, ${BUNDLE.province} — walking access to school.`;
+  document.getElementById("formulatext").textContent =
+    `${p.threshold_min} min × ${p.kmh} km/h ÷ ${p.detour} detour = ${Math.round(p.radius_m)} m`;
+  ring.setRadius(p.radius_m);
+
+  const pct = c.province_ratio != null ? Math.round(c.province_ratio*100) : null;
+  document.getElementById("conf").innerHTML =
+    `<b>Only ${fmt(c.mapped)} schools are mapped here.</b> ${pct != null
+      ? `Across ${BUNDLE.province}, open data holds about ${pct}% of the schools the official count reports.`
+      : ""} Distances are to the nearest <em>mapped</em> school, so these are places to
+      <strong>field-verify</strong> — not confirmed gaps.`;
+}
+
+/* ---------------- load ---------------- */
+// The first district is loaded while the landing page still covers the map, so Leaflet
+// has not measured its container yet and fitBounds lands at maximum zoom. Measuring
+// first is what makes the district actually appear.
+function fitDistrict(){
+  if (!BUNDLE) return;
+  map.invalidateSize();
+  const [w,s,e,n] = BUNDLE.bounds;
+  map.fitBounds([[s,w],[n,e]], { padding:[28,28] });
+}
+
+async function loadDistrict(code){
+  document.getElementById("loading").classList.remove("hide");
+  try{
+    const res = await fetch(`districts/${code}.json`, { cache:"force-cache" });
+    if (!res.ok) throw new Error(`Could not load ${code} (${res.status}).`);
+    BUNDLE = await res.json();
+    window.BUNDLE = BUNDLE;
+    CELLS = BUNDLE.cells;
+    buildIndex();
+    paintChoropleth(); paintSchools(); paintLegend(); paintSites(); paintStats();
+    fitDistrict();
+  }catch(err){
+    document.getElementById("conf").innerHTML =
+      `<b>That district is not bundled.</b> The pipeline runs on any of Pakistan's 160 districts;
+       only the ones in the picker have been precomputed for this demo.`;
+  }finally{
+    document.getElementById("loading").classList.add("hide");
+  }
+}
+
+(async function init(){
+  try{
+    const res = await fetch("districts/index.json", { cache:"no-cache" });
+    IDX = await res.json();
+  }catch(e){
+    document.getElementById("loading").innerHTML = "<span>Could not load the district list.</span>";
+    return;
+  }
+  const pick = document.getElementById("pick");
+  pick.innerHTML = IDX.districts.map(d =>
+    `<option value="${d.code}">${d.name}, ${d.province} — ${d.mapped} mapped schools</option>`).join("");
+  pick.onchange = () => loadDistrict(pick.value);
+
+  // Open on a district with enough mapped schools to show an actual gradient. Landing
+  // on one with a single school would render a flat wall of "worst" and teach nobody
+  // anything on first sight - those districts are worth seeing, but second.
+  const best = IDX.districts.reduce((a, b) => (b.mapped > a.mapped ? b : a), IDX.districts[0]);
+  if (best){ pick.value = best.code; await loadDistrict(best.code); }
 })();
+
+document.getElementById("enter").onclick = () => {
+  document.getElementById("landing").classList.add("hide");
+  setTimeout(fitDistrict, 60);
+};
 </script>
 </body>
 </html>

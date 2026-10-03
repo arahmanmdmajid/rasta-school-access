@@ -1,0 +1,266 @@
+{
+ "districts": [
+  {
+   "code": "PK701",
+   "name": "Badin",
+   "province": "Sindh",
+   "mapped": 1,
+   "children_est": 606056,
+   "underserved_est": 606056,
+   "bytes": 354083
+  },
+  {
+   "code": "PK702",
+   "name": "Central Karachi",
+   "province": "Sindh",
+   "mapped": 321,
+   "children_est": 1042653,
+   "underserved_est": 120944,
+   "bytes": 65728
+  },
+  {
+   "code": "PK703",
+   "name": "Dadu",
+   "province": "Sindh",
+   "mapped": 0,
+   "children_est": 588029,
+   "underserved_est": 588029,
+   "bytes": 210264
+  },
+  {
+   "code": "PK704",
+   "name": "East Karachi",
+   "province": "Sindh",
+   "mapped": 320,
+   "children_est": 1177713,
+   "underserved_est": 361546,
+   "bytes": 88624
+  },
+  {
+   "code": "PK705",
+   "name": "Ghotki",
+   "province": "Sindh",
+   "mapped": 3,
+   "children_est": 515434,
+   "underserved_est": 514041,
+   "bytes": 184711
+  },
+  {
+   "code": "PK706",
+   "name": "Hyderabad",
+   "province": "Sindh",
+   "mapped": 103,
+   "children_est": 796918,
+   "underserved_est": 420795,
+   "bytes": 104356
+  },
+  {
+   "code": "PK707",
+   "name": "Jacobabad",
+   "province": "Sindh",
+   "mapped": 1,
+   "children_est": 399654,
+   "underserved_est": 397632,
+   "bytes": 183560
+  },
+  {
+   "code": "PK708",
+   "name": "Jamshoro",
+   "province": "Sindh",
+   "mapped": 8,
+   "children_est": 320252,
+   "underserved_est": 307359,
+   "bytes": 233129
+  },
+  {
+   "code": "PK709",
+   "name": "Kambar Shahdad Kot",
+   "province": "Sindh",
+   "mapped": 1,
+   "children_est": 496187,
+   "underserved_est": 486360,
+   "bytes": 212311
+  },
+  {
+   "code": "PK710",
+   "name": "Kashmore",
+   "province": "Sindh",
+   "mapped": 7,
+   "children_est": 349294,
+   "underserved_est": 331223,
+   "bytes": 172355
+  },
+  {
+   "code": "PK711",
+   "name": "Khairpur",
+   "province": "Sindh",
+   "mapped": 8,
+   "children_est": 833710,
+   "underserved_est": 811320,
+   "bytes": 253512
+  },
+  {
+   "code": "PK712",
+   "name": "Korangi Karachi",
+   "province": "Sindh",
+   "mapped": 131,
+   "children_est": 772857,
+   "underserved_est": 309111,
+   "bytes": 42439
+  },
+  {
+   "code": "PK713",
+   "name": "Larkana",
+   "province": "Sindh",
+   "mapped": 6,
+   "children_est": 541871,
+   "underserved_est": 517490,
+   "bytes": 139326
+  },
+  {
+   "code": "PK714",
+   "name": "Malir Karachi",
+   "province": "Sindh",
+   "mapped": 107,
+   "children_est": 797564,
+   "underserved_est": 553751,
+   "bytes": 164716
+  },
+  {
+   "code": "PK715",
+   "name": "Matiari",
+   "province": "Sindh",
+   "mapped": 2,
+   "children_est": 278639,
+   "underserved_est": 274283,
+   "bytes": 104897
+  },
+  {
+   "code": "PK716",
+   "name": "Mirpur Khas",
+   "province": "Sindh",
+   "mapped": 0,
+   "children_est": 535933,
+   "underserved_est": 535933,
+   "bytes": 218337
+  },
+  {
+   "code": "PK717",
+   "name": "Naushahro Feroze",
+   "province": "Sindh",
+   "mapped": 8,
+   "children_est": 584662,
+   "underserved_est": 575330,
+   "bytes": 195096
+  },
+  {
+   "code": "PK718",
+   "name": "Sanghar",
+   "province": "Sindh",
+   "mapped": 18,
+   "children_est": 725841,
+   "underserved_est": 706120,
+   "bytes": 309174
+  },
+  {
+   "code": "PK719",
+   "name": "Shaheed Benazir Abad",
+   "province": "Sindh",
+   "mapped": 0,
+   "children_est": 588106,
+   "underserved_est": 588106,
+   "bytes": 209050
+  },
+  {
+   "code": "PK720",
+   "name": "Shikarpur",
+   "province": "Sindh",
+   "mapped": 2,
+   "children_est": 477714,
+   "underserved_est": 476384,
+   "bytes": 166399
+  },
+  {
+   "code": "PK721",
+   "name": "South Karachi",
+   "province": "Sindh",
+   "mapped": 343,
+   "children_est": 1380864,
+   "underserved_est": 444121,
+   "bytes": 112964
+  },
+  {
+   "code": "PK722",
+   "name": "Sujawal",
+   "province": "Sindh",
+   "mapped": 6,
+   "children_est": 279474,
+   "underserved_est": 278224,
+   "bytes": 176688
+  },
+  {
+   "code": "PK723",
+   "name": "Sukkur",
+   "province": "Sindh",
+   "mapped": 21,
+   "children_est": 492409,
+   "underserved_est": 426322,
+   "bytes": 145082
+  },
+  {
+   "code": "PK724",
+   "name": "Tando Allahyar",
+   "province": "Sindh",
+   "mapped": 28,
+   "children_est": 270387,
+   "underserved_est": 247544,
+   "bytes": 132208
+  },
+  {
+   "code": "PK725",
+   "name": "Tando Muhammad Khan",
+   "province": "Sindh",
+   "mapped": 9,
+   "children_est": 248232,
+   "underserved_est": 228852,
+   "bytes": 135961
+  },
+  {
+   "code": "PK726",
+   "name": "Tharparkar",
+   "province": "Sindh",
+   "mapped": 4,
+   "children_est": 487010,
+   "underserved_est": 482370,
+   "bytes": 489519
+  },
+  {
+   "code": "PK727",
+   "name": "Thatta",
+   "province": "Sindh",
+   "mapped": 9,
+   "children_est": 312390,
+   "underserved_est": 307779,
+   "bytes": 230360
+  },
+  {
+   "code": "PK728",
+   "name": "Umer Kot",
+   "province": "Sindh",
+   "mapped": 0,
+   "children_est": 364530,
+   "underserved_est": 364530,
+   "bytes": 202409
+  },
+  {
+   "code": "PK729",
+   "name": "West Karachi",
+   "province": "Sindh",
+   "mapped": 68,
+   "children_est": 960531,
+   "underserved_est": 665388,
+   "bytes": 48223
+  }
+ ],
+ "note": "Districts built for this demo. The pipeline runs on any of Pakistan's 160 ADM2 districts; these are the ones bundled here."
+}
