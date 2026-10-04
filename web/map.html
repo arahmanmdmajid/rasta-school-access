@@ -101,8 +101,8 @@ select:focus{outline:2px solid var(--accent); outline-offset:1px}
 .banner b{color:var(--warn)}
 
 /* ---------- legend / formula ---------- */
-.legrow{display:flex; align-items:center; gap:9px; font-size:13px; padding:3px 0}
-.sw{width:15px; height:15px; border-radius:4px; flex:none}
+.legrow{display:flex; align-items:center; gap:9px; font-size:12.5px; padding:2.5px 0}
+.sw{width:14px; height:14px; border-radius:4px; flex:none}
 #formula{
   margin-top:10px; font-size:12.4px; color:var(--muted); border:1px dashed var(--line);
   border-radius:10px; padding:10px 12px; background:var(--bg);
@@ -123,6 +123,35 @@ select:focus{outline:2px solid var(--accent); outline-offset:1px}
 :root[data-theme="dark"] .rank{color:#06201c}
 .site .m{font-size:12px; color:var(--muted)}
 .site .c{font-weight:600; font-variant-numeric:tabular-nums; font-size:14px}
+
+/* ---------- legend: collapsible, on the map ---------- */
+.sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
+#legendbox{position:absolute; left:14px; bottom:30px; z-index:1140; display:flex; align-items:flex-end; gap:8px}
+#legendtoggle{
+  width:34px; height:34px; display:none; place-items:center; flex:none;
+  background:var(--panel); border:1px solid var(--line); border-radius:9px; color:var(--ink);
+  box-shadow:0 1px 2px rgba(0,0,0,.12),0 6px 18px rgba(0,0,0,.12);
+}
+#legendtoggle svg{width:15px; height:15px; fill:currentColor}
+#legendtoggle:hover{border-color:var(--accent); color:var(--accent)}
+#legendbox.closed #legendtoggle{display:grid}
+#legendbox.closed #legendpanel{display:none}
+#legendpanel{
+  background:var(--panel); border:1px solid var(--line); border-radius:12px;
+  padding:11px 13px 10px; min-width:176px; max-width:min(62vw,230px);
+  box-shadow:0 1px 2px rgba(0,0,0,.12),0 8px 24px rgba(0,0,0,.14);
+}
+.lhead{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  font-size:10.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--muted);
+  font-weight:600; margin-bottom:9px;
+}
+#legendclose{
+  background:transparent; border:0; color:var(--muted); font-size:15px; line-height:1;
+  width:22px; height:22px; border-radius:6px; flex:none; display:grid; place-items:center;
+}
+#legendclose:hover{color:var(--ink); background:var(--bg)}
+#legendclose:focus-visible,#legendtoggle:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 
 /* ---------- ask: floating window over the map ---------- */
 /* The window stays shut until it is asked for. The button is what has to carry the
@@ -333,10 +362,6 @@ select:focus{outline:2px solid var(--accent); outline-offset:1px}
         <div id="sites"></div>
       </div>
 
-      <div class="section">
-        <div class="label">Walk to nearest mapped school</div>
-        <div id="legend"></div>
-      </div>
 
       <p class="foot">
         Distances are straight-line estimates inflated by a detour factor, not routed along roads.
@@ -351,6 +376,28 @@ select:focus{outline:2px solid var(--accent); outline-offset:1px}
     <div id="map"></div>
     <div id="loading"><span><span class="spin"></span>Loading district…</span></div>
     <div id="tip"></div>
+
+    <!-- Bottom-left: zoom owns the top-left, Ask owns the bottom-right, and the
+         attribution runs along the bottom edge. Collapsible, because on a phone a
+         legend that cannot be dismissed is just a thing covering the map. -->
+    <div id="legendbox">
+      <button id="legendtoggle" aria-expanded="true" aria-controls="legendpanel"
+              title="Hide the legend">
+        <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <circle cx="3" cy="3.5" r="1.8"/><rect x="6.6" y="2.6" width="7.4" height="1.8" rx=".9"/>
+          <circle cx="3" cy="8" r="1.8"/><rect x="6.6" y="7.1" width="7.4" height="1.8" rx=".9"/>
+          <circle cx="3" cy="12.5" r="1.8"/><rect x="6.6" y="11.6" width="7.4" height="1.8" rx=".9"/>
+        </svg>
+        <span class="sr">Legend</span>
+      </button>
+      <div id="legendpanel">
+        <div class="lhead">
+          <span>Walk to nearest school</span>
+          <button id="legendclose" type="button" aria-label="Hide the legend">&laquo;</button>
+        </div>
+        <div id="legend"></div>
+      </div>
+    </div>
 
     <!-- The agent pipeline floats over the map rather than competing with the shortlist
          for panel space: you are asking about the thing you are looking at. -->
@@ -683,6 +730,21 @@ async function loadDistrict(code){
 // than the demo.
 const LOCAL = ["127.0.0.1","localhost"].includes(location.hostname);
 const API_URL = LOCAL ? "http://127.0.0.1:7860" : "https://rasta-api-2019.onrender.com";
+
+/* ---------------- legend ---------------- */
+// Open by default where there is room, collapsed on a phone. The choice is remembered,
+// because someone who closed it does not want it back on every district they look at.
+const legendBox = document.getElementById("legendbox");
+function setLegend(open){
+  legendBox.classList.toggle("closed", !open);
+  document.getElementById("legendtoggle").setAttribute("aria-expanded", open ? "true" : "false");
+  try{ localStorage.setItem("rasta-legend", open ? "1" : "0"); }catch(e){}
+}
+let legendPref = null;
+try{ legendPref = localStorage.getItem("rasta-legend"); }catch(e){}
+setLegend(legendPref !== null ? legendPref === "1" : innerWidth > 900);
+document.getElementById("legendtoggle").onclick = () => setLegend(true);
+document.getElementById("legendclose").onclick = () => setLegend(false);
 
 const fab = document.getElementById("askfab");
 const win = document.getElementById("askwin");

@@ -73,6 +73,21 @@ def test_map_links_back_to_the_story(mp):
     assert 'href="index.html"' in mp
 
 
+def test_legend_sits_on_the_map_and_can_be_dismissed(mp):
+    """
+    Bottom-left: zoom controls own the top-left and the ask button owns the bottom-right.
+    It must collapse, because on a phone a legend that cannot be dismissed is just
+    something covering the map.
+    """
+    flat = mp.replace(" ", "")
+    assert 'id="legendbox"' in mp and 'id="legendtoggle"' in mp
+    assert "#legendbox{position:absolute;left:14px" in flat
+    assert "#legendbox.closed#legendpanel{display:none}" in flat
+    assert "#legendbox.closed#legendtoggle{display:grid}" in flat
+    assert 'rasta-legend' in mp, "the open/closed choice is not remembered"
+    assert '<div id="legend"></div>' in mp and "#panel #legend" not in mp
+
+
 # ----------------------------------------------------------- the landing page
 
 def test_landing_is_the_space_entry_point():
