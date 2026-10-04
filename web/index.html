@@ -413,12 +413,12 @@ const $ = s => document.querySelector(s);
 const SVGNS = "http://www.w3.org/2000/svg";
 
 // Real figures, computed from the district bundles this site ships.
-const SINDH_BEYOND = 10579971;               // summed from the 29 bundles in districts/
+const SINDH_BEYOND = 10563395;               // summed from the 29 bundles in districts/
 const DISTRICT = "districts/PK714.json";     // Malir, Karachi
 
 const stage = $("#stage");
 let CELLS = null, SCHOOLS = null, NEWSITE = null, R_PX = 0;
-let DISTRICT_BEYOND = 444816, NEW_SITE_REACH = 9957, REACHED_N = 11, REACHED = new Set();
+let DISTRICT_BEYOND = 444810, NEW_SITE_REACH = 9957, REACHED_N = 11, REACHED = new Set();
 // Step one's walking path lives in the original square; the district gets cropped to
 // its own content. The frame swaps between them when the story moves on.
 const FULL_VB = "0 0 1000 1000";

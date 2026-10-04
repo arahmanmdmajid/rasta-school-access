@@ -1,13 +1,13 @@
 {
- "built": "20261003192654",
+ "built": "20261004052200",
  "districts": [
   {
    "code": "PK701",
    "name": "Badin",
    "province": "Sindh",
    "mapped": 78,
-   "children_est": 606056,
-   "underserved_est": 563680,
+   "children_est": 605927,
+   "underserved_est": 563552,
    "bytes": 289717
   },
   {
@@ -15,8 +15,8 @@
    "name": "Central Karachi",
    "province": "Sindh",
    "mapped": 804,
-   "children_est": 1042653,
-   "underserved_est": 51589,
+   "children_est": 1042651,
+   "underserved_est": 51588,
    "bytes": 156903
   },
   {
@@ -24,8 +24,8 @@
    "name": "Dadu",
    "province": "Sindh",
    "mapped": 82,
-   "children_est": 588029,
-   "underserved_est": 512668,
+   "children_est": 587926,
+   "underserved_est": 510922,
    "bytes": 163066
   },
   {
@@ -34,7 +34,7 @@
    "province": "Sindh",
    "mapped": 1227,
    "children_est": 1177713,
-   "underserved_est": 152565,
+   "underserved_est": 152561,
    "bytes": 244768
   },
   {
@@ -42,8 +42,8 @@
    "name": "Ghotki",
    "province": "Sindh",
    "mapped": 119,
-   "children_est": 515434,
-   "underserved_est": 438851,
+   "children_est": 515413,
+   "underserved_est": 438830,
    "bytes": 164616
   },
   {
@@ -51,8 +51,8 @@
    "name": "Hyderabad",
    "province": "Sindh",
    "mapped": 472,
-   "children_est": 796918,
-   "underserved_est": 298904,
+   "children_est": 796885,
+   "underserved_est": 298877,
    "bytes": 141357
   },
   {
@@ -60,8 +60,8 @@
    "name": "Jacobabad",
    "province": "Sindh",
    "mapped": 36,
-   "children_est": 399654,
-   "underserved_est": 360668,
+   "children_est": 399552,
+   "underserved_est": 360565,
    "bytes": 120313
   },
   {
@@ -69,8 +69,8 @@
    "name": "Jamshoro",
    "province": "Sindh",
    "mapped": 84,
-   "children_est": 320252,
-   "underserved_est": 250118,
+   "children_est": 320229,
+   "underserved_est": 250098,
    "bytes": 160636
   },
   {
@@ -78,8 +78,8 @@
    "name": "Kambar Shahdad Kot",
    "province": "Sindh",
    "mapped": 55,
-   "children_est": 496187,
-   "underserved_est": 442069,
+   "children_est": 496199,
+   "underserved_est": 442084,
    "bytes": 150836
   },
   {
@@ -87,8 +87,8 @@
    "name": "Kashmore",
    "province": "Sindh",
    "mapped": 46,
-   "children_est": 349294,
-   "underserved_est": 303296,
+   "children_est": 349201,
+   "underserved_est": 303206,
    "bytes": 119314
   },
   {
@@ -96,8 +96,8 @@
    "name": "Khairpur",
    "province": "Sindh",
    "mapped": 166,
-   "children_est": 833710,
-   "underserved_est": 732295,
+   "children_est": 833678,
+   "underserved_est": 732262,
    "bytes": 233798
   },
   {
@@ -105,8 +105,8 @@
    "name": "Korangi Karachi",
    "province": "Sindh",
    "mapped": 373,
-   "children_est": 772857,
-   "underserved_est": 135761,
+   "children_est": 772853,
+   "underserved_est": 125847,
    "bytes": 78562
   },
   {
@@ -114,8 +114,8 @@
    "name": "Larkana",
    "province": "Sindh",
    "mapped": 111,
-   "children_est": 541871,
-   "underserved_est": 421546,
+   "children_est": 541874,
+   "underserved_est": 421547,
    "bytes": 103853
   },
   {
@@ -123,8 +123,8 @@
    "name": "Malir Karachi",
    "province": "Sindh",
    "mapped": 352,
-   "children_est": 797564,
-   "underserved_est": 444816,
+   "children_est": 797554,
+   "underserved_est": 444810,
    "bytes": 124636
   },
   {
@@ -132,8 +132,8 @@
    "name": "Matiari",
    "province": "Sindh",
    "mapped": 35,
-   "children_est": 278639,
-   "underserved_est": 235051,
+   "children_est": 278613,
+   "underserved_est": 235030,
    "bytes": 78265
   },
   {
@@ -141,8 +141,8 @@
    "name": "Mirpur Khas",
    "province": "Sindh",
    "mapped": 98,
-   "children_est": 535933,
-   "underserved_est": 471035,
+   "children_est": 535875,
+   "underserved_est": 470980,
    "bytes": 184890
   },
   {
@@ -150,8 +150,8 @@
    "name": "Naushahro Feroze",
    "province": "Sindh",
    "mapped": 92,
-   "children_est": 584662,
-   "underserved_est": 511041,
+   "children_est": 584684,
+   "underserved_est": 510137,
    "bytes": 152008
   },
   {
@@ -159,8 +159,8 @@
    "name": "Sanghar",
    "province": "Sindh",
    "mapped": 144,
-   "children_est": 725841,
-   "underserved_est": 644916,
+   "children_est": 725875,
+   "underserved_est": 644829,
    "bytes": 281508
   },
   {
@@ -168,8 +168,8 @@
    "name": "Shaheed Benazir Abad",
    "province": "Sindh",
    "mapped": 115,
-   "children_est": 588106,
-   "underserved_est": 518133,
+   "children_est": 588101,
+   "underserved_est": 518131,
    "bytes": 192003
   },
   {
@@ -177,8 +177,8 @@
    "name": "Shikarpur",
    "province": "Sindh",
    "mapped": 58,
-   "children_est": 477714,
-   "underserved_est": 432263,
+   "children_est": 477688,
+   "underserved_est": 432237,
    "bytes": 124745
   },
   {
@@ -186,8 +186,8 @@
    "name": "South Karachi",
    "province": "Sindh",
    "mapped": 1073,
-   "children_est": 1380864,
-   "underserved_est": 196851,
+   "children_est": 1380870,
+   "underserved_est": 196858,
    "bytes": 218907
   },
   {
@@ -195,8 +195,8 @@
    "name": "Sujawal",
    "province": "Sindh",
    "mapped": 23,
-   "children_est": 279474,
-   "underserved_est": 263016,
+   "children_est": 279550,
+   "underserved_est": 263091,
    "bytes": 137860
   },
   {
@@ -204,8 +204,8 @@
    "name": "Sukkur",
    "province": "Sindh",
    "mapped": 158,
-   "children_est": 492409,
-   "underserved_est": 364708,
+   "children_est": 492387,
+   "underserved_est": 361945,
    "bytes": 127946
   },
   {
@@ -213,8 +213,8 @@
    "name": "Tando Allahyar",
    "province": "Sindh",
    "mapped": 70,
-   "children_est": 270387,
-   "underserved_est": 234999,
+   "children_est": 270342,
+   "underserved_est": 234955,
    "bytes": 95735
   },
   {
@@ -222,8 +222,8 @@
    "name": "Tando Muhammad Khan",
    "province": "Sindh",
    "mapped": 37,
-   "children_est": 248232,
-   "underserved_est": 218549,
+   "children_est": 248248,
+   "underserved_est": 218565,
    "bytes": 88906
   },
   {
@@ -231,8 +231,8 @@
    "name": "Tharparkar",
    "province": "Sindh",
    "mapped": 55,
-   "children_est": 487010,
-   "underserved_est": 457901,
+   "children_est": 486467,
+   "underserved_est": 457362,
    "bytes": 340457
   },
   {
@@ -240,8 +240,8 @@
    "name": "Thatta",
    "province": "Sindh",
    "mapped": 56,
-   "children_est": 312390,
-   "underserved_est": 285351,
+   "children_est": 312230,
+   "underserved_est": 285191,
    "bytes": 171046
   },
   {
@@ -249,8 +249,8 @@
    "name": "Umer Kot",
    "province": "Sindh",
    "mapped": 59,
-   "children_est": 364530,
-   "underserved_est": 335777,
+   "children_est": 364533,
+   "underserved_est": 335774,
    "bytes": 154744
   },
   {
@@ -258,8 +258,8 @@
    "name": "West Karachi",
    "province": "Sindh",
    "mapped": 312,
-   "children_est": 960531,
-   "underserved_est": 301554,
+   "children_est": 960536,
+   "underserved_est": 301561,
    "bytes": 73890
   }
  ],

@@ -291,9 +291,20 @@ def build(code: str, facility_type: str) -> Path:
 
     demand = attach_rwi(demand, utm)
     dist_m, minutes = walk_minutes_to_supply(demand, supply, utm)
+    # Round ONCE, here, and derive everything from the rounded values - because these are
+    # what ship in the bundle and what every later consumer adds up. Computing the totals
+    # at full precision instead put cells sitting exactly on the threshold on one side
+    # here and the other side in the API: a 10,000-child disagreement in dense Korangi,
+    # where a great many cells sit right at fifteen minutes.
+    minutes = np.round(minutes, 1)
 
     pop = demand["population"].to_numpy(dtype=float)
-    children = pop * config.CHILD_SHARE
+    # Rounded per cell, then summed - because the rounded per-cell values are what ship in
+    # the bundle and what the analyst adds up. Summing the unrounded figures here instead
+    # left the stored total and the recomputed one disagreeing by a handful of children,
+    # which is small, invisible, and exactly the kind of thing that makes a reader doubt
+    # everything else on the page.
+    children = np.round(pop * config.CHILD_SHARE)
     # Centroids are computed in the projected CRS and then converted, not taken in
     # degrees: a centroid of a lat/lon polygon is not the centroid of the real shape.
     centroids = gpd.GeoSeries(demand.to_crs(utm).centroid, crs=utm).to_crs(4326)

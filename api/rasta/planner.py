@@ -17,7 +17,13 @@ import re
 
 from . import ai
 
-OPERATIONS = ("gap", "shortlist", "summary", "compare", "explain", "unsupported")
+OPERATIONS = ("gap", "shortlist", "summary", "compare", "explain", "poorest", "unsupported")
+
+# "Show me the least privileged area" is a real question an officer asks, and the one the
+# Relative Wealth Index is actually for.
+WANTS_POOREST = re.compile(
+    r"poor(est|er)?\b|least privileg|underprivileg|deprived|disadvantag|worst off|"
+    r"least well.?off|low(est)? income|needi(est|er)|most vulnerable|wealth", re.I)
 INTERVENTIONS = ("ncl", "rehab", "annexe", "route", "any")
 COHORTS = ("children", "girls")
 
@@ -38,6 +44,7 @@ operation is one of:
   shortlist  - which sites should be visited or invested in first
   summary    - an overview of a district
   compare    - set two or more districts against each other
+  poorest    - the least well-off underserved areas, by relative wealth
   explain    - a question about this tool: what it shows, how it works, its data or limits
   unsupported- anything not about school access, population or this analysis
 
@@ -66,6 +73,8 @@ Examples:
   "how many girls are beyond a 15 minute walk?" -> {"operation":"gap","params":{"minutes":15,"cohort":"girls"}}
   "tell me about Dadu" -> {"operation":"summary","params":{"district":"Dadu"}}
   "compare Malir and Tharparkar" -> {"operation":"compare","params":{}}
+  "show me the least privileged areas" -> {"operation":"poorest","params":{}}
+  "where are the poorest children who are far from school?" -> {"operation":"poorest","params":{}}
   "what does the map show?" -> {"operation":"explain","params":{"topic":"overview"}}
   "what do the colours mean?" -> {"operation":"explain","params":{"topic":"colours"}}
   "how do you work out the walking time?" -> {"operation":"explain","params":{"topic":"method"}}
@@ -183,6 +192,9 @@ def normalize(intent: dict, question: str) -> dict:
     # Guard rail: a plainly prescriptive question is a shortlist, whatever was returned.
     if op in ("gap", "summary") and WANTS_SHORTLIST.search(question or ""):
         op = "shortlist"
+    # A question about who is worst off is about wealth, not just distance.
+    if op in ("gap", "summary", "shortlist") and WANTS_POOREST.search(question or ""):
+        op = "poorest"
 
     # A question about the tool is an explain, even when the model called it something
     # else - and an explain always needs a topic to answer.
@@ -245,9 +257,12 @@ def local_route(question: str, names: list[str] | None = None) -> dict:
 
     if OFF_TOPIC.search(t) or not (comparing or meta or params.get("district") or re.search(
         r"school|child|children|girl|walk|access|far|distance|centre|center|site|district|"
-        r"underserved|gap|invest|priorit|recommend|population|poor|map|data|legend", t)):
+        r"underserved|gap|invest|priorit|recommend|population|poor|map|data|legend|"
+        r"privileg|deprived|wealth|vulnerable", t)):
         return {"operation": "unsupported", "params": {}}
 
+    if WANTS_POOREST.search(t):
+        return {"operation": "poorest", "params": params}
     if WANTS_SHORTLIST.search(t):
         return {"operation": "shortlist", "params": params}
     # Asked before the gap/summary branches: "how do you calculate the walk time" contains

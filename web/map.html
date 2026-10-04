@@ -486,6 +486,7 @@ basemaps.dark.setOpacity(isDark() ? 1 : 0);
 const choro  = L.layerGroup().addTo(map);
 const schoolLayer = L.layerGroup().addTo(map);
 const marks  = L.layerGroup().addTo(map);
+const answerLayer = L.layerGroup().addTo(map);   // what the current answer is talking about
 
 // The catchment circle is created once and only moved. Rebuilding it per frame is what
 // makes this kind of hover feel sticky.
@@ -646,6 +647,39 @@ function paintSites(){
     const s = BUNDLE.shortlist[+b.dataset.i];
     map.flyTo([s.lat, s.lon], 14, { duration:.7 });
   });
+}
+
+// Show on the map what the answer is talking about. Without this the assistant describes
+// "the worst-served cells" and the map sits there unchanged, leaving the reader to guess
+// which ones it meant.
+function renderAnswer(draw){
+  answerLayer.clearLayers();
+  if (!draw) return;
+  const offs = BUNDLE.hex_offsets_m, bounds = [];
+
+  (draw.cells || []).forEach(([lon, lat]) => {
+    bounds.push([lat, lon]);
+    const ring = offs && offs.length
+      ? offs.map(([dx, dy]) => [lat + dy / ky, lon + dx / kx])
+      : null;
+    const style = { color:css("--isolate") || "#e4584c", weight:2, fillColor:css("--accent"),
+                    fillOpacity:.22, interactive:false };
+    (ring ? L.polygon(ring, style) : L.circleMarker([lat, lon], { ...style, radius:9 }))
+      .addTo(answerLayer);
+  });
+
+  (draw.sites || []).forEach(s => {
+    bounds.push([s.lat, s.lon]);
+    L.circle([s.lat, s.lon], {
+      radius: BUNDLE.params.radius_m, interactive:false,
+      color:css("--accent"), weight:2, fillColor:css("--accent"), fillOpacity:.12,
+    }).addTo(answerLayer);
+  });
+
+  if (bounds.length){
+    try{ map.flyToBounds(L.latLngBounds(bounds).pad(0.25), { duration:.7, maxZoom:13 }); }
+    catch(e){ /* a failed animation must never hide the answer */ }
+  }
 }
 
 function paintStats(){
@@ -816,6 +850,8 @@ document.getElementById("askform").onsubmit = async (ev) => {
     }
     document.getElementById("trace").innerHTML = (data.trace || []).map(s =>
       `<li><b>${s.agent}</b><span class="kind ${s.kind}">${s.kind}</span><br>${s.decided}</li>`).join("");
+
+    renderAnswer(data.draw);
   }catch(err){
     clearTimeout(slow);
     text.textContent = (err.name === "TimeoutError" || /timed out/i.test(err.message))

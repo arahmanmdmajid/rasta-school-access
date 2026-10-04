@@ -108,6 +108,73 @@ def gap(bundle: dict, params: dict) -> dict:
             "fully_unmapped": unmapped,
         },
         "text": text,
+        # The map should show what the sentence is talking about, so the worst-served
+        # cells come back as coordinates for the page to outline.
+        "draw": {"cells": _worst_cells(bundle, minutes), "label": "worst-served cells"},
+    }
+
+
+def _worst_cells(bundle: dict, minutes: float, limit: int = 40) -> list[list[float]]:
+    """The cells furthest from a school, as [lon, lat] for the page to highlight."""
+    cells = bundle["cells"]
+    rows = [(cells["min"][i], cells["ch"][i], i) for i in range(len(cells["min"]))
+            if cells["min"][i] > minutes]
+    # Worst first, but weighted by how many children are actually there: an empty cell an
+    # hour from school matters less than a crowded one forty minutes away.
+    rows.sort(key=lambda r: -(r[0] * (r[1] ** 0.5)))
+    return [[cells["lon"][i], cells["lat"][i]] for _, _, i in rows[:limit]]
+
+
+def poorest(bundle: dict, params: dict) -> dict:
+    """
+    Where the least-privileged underserved children are.
+
+    This is the one question the Relative Wealth Index is actually for, and it is what an
+    officer means by "show me the least privileged area". RWI is a modelled estimate of
+    wealth RELATIVE to the rest of the country, so it ranks places - it never says anyone
+    is poor in absolute terms, and the wording has to keep that distinction.
+    """
+    minutes = float(params.get("minutes") or config.THRESHOLD_MIN)
+    limit = int(params.get("limit") or 25)
+    cells = bundle["cells"]
+
+    rows = [(cells["rwi"][i], cells["ch"][i], cells["min"][i], i)
+            for i in range(len(cells["min"]))
+            if cells["rwi"][i] is not None and cells["min"][i] > minutes]
+    if not rows:
+        return {
+            "op": "poorest",
+            "facts": {"district": bundle["name"], "count": 0},
+            "text": (f"No cell in {bundle['name']} is both beyond {minutes:.0f} minutes' "
+                     f"walk and carries a relative wealth estimate."),
+        }
+
+    rows.sort(key=lambda r: r[0])                 # lowest relative wealth first
+    picked = rows[:limit]
+    children = sum(r[1] for r in picked)
+    worst_rwi = picked[0][0]
+    median_rwi = sorted(c for c in cells["rwi"] if c is not None)[len(
+        [c for c in cells["rwi"] if c is not None]) // 2]
+
+    text = (
+        f"The least well-off underserved areas of {bundle['name']} are the {len(picked)} "
+        f"cells with the lowest relative wealth that are also beyond {minutes:.0f} "
+        f"minutes' walk of a mapped school. About {round(children):,} school-age children "
+        f"live in them. Their relative wealth runs down to {worst_rwi:.2f}, against a "
+        f"district median of {median_rwi:.2f}. Relative wealth is a modelled estimate of "
+        f"standing compared with the rest of Pakistan, not a measure of income, so it "
+        f"ranks places rather than identifying poor households."
+    )
+    return {
+        "op": "poorest",
+        "facts": {
+            "district": bundle["name"], "count": len(picked),
+            "children": round(children), "lowest_rwi": round(worst_rwi, 2),
+            "median_rwi": round(median_rwi, 2), "threshold_min": minutes,
+        },
+        "text": text,
+        "draw": {"cells": [[cells["lon"][r[3]], cells["lat"][r[3]]] for r in picked],
+                 "label": "least well-off underserved cells"},
     }
 
 
@@ -318,6 +385,8 @@ def run(operation: str, bundle, params: dict) -> dict:
         return shortlist(bundle, params)
     if operation == "explain":
         return explain(bundle, params)
+    if operation == "poorest":
+        return poorest(bundle, params)
     # Anything unrecognised falls through to a summary rather than failing: a defensive
     # default inherited from the forked code, and still the right behaviour.
     return summary(bundle, params)
