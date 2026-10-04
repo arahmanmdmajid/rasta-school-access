@@ -81,7 +81,12 @@ select:focus{outline:2px solid var(--accent); outline-offset:1px}
 }
 #readout .hint{color:var(--muted); font-size:13px}
 .big{font-family:Fraunces,Georgia,serif; font-size:34px; line-height:1.05; font-weight:600}
-.biglbl{margin:5px 0 0; font-size:13px; line-height:1.4; color:var(--muted); max-width:30ch}
+.big .unit{font-size:19px}
+.biglbl{margin:5px 0 0; font-size:13px; line-height:1.45; color:var(--muted); max-width:32ch}
+/* A spot where everyone is already served is good news, not a zero. It reads calm;
+   empty land reads neutral, because there is nothing to celebrate there either. */
+#live[data-state="met"] .big{color:var(--near)}
+#live[data-state="empty"] .big{color:var(--muted); font-size:27px}
 .rowstat{display:flex; justify-content:space-between; gap:12px; padding:5px 0; font-size:13.5px; border-top:1px dashed var(--line)}
 .rowstat:first-of-type{border-top:0}
 .rowstat b{font-variant-numeric:tabular-nums; font-weight:600}
@@ -333,8 +338,8 @@ select:focus{outline:2px solid var(--accent); outline-offset:1px}
                  it does above "people in this cell". It is narrower than that: children
                  who are too far TODAY and whom a centre at this spot would bring inside
                  the threshold. The caption now says so. -->
-            <div class="big"><span id="reach">—</span></div>
-            <p class="biglbl">children a centre here would bring within a 15-minute walk</p>
+            <div class="big"><span id="reach">—</span> <span id="reachunit" class="unit">children</span></div>
+            <p class="biglbl" id="reachlbl">would be brought within a 15-minute walk by a centre here.</p>
             <div style="margin-top:13px">
               <div class="rowstat"><span class="k">Walk from here to school</span><b id="walkmin">—</b></div>
               <div class="rowstat"><span class="k">People living in this cell</span><b id="cellpop">—</b></div>
@@ -543,14 +548,19 @@ function nearestCell(x, y){
   }
   return best;
 }
-function childrenReached(x, y){
+// Counts the children a centre here would newly serve, and - just as important - tells
+// the two zero cases apart. Nobody living nearby and everybody nearby already served
+// both total zero, and they mean opposite things to someone choosing a site.
+function reachStats(x, y){
   const r = BUNDLE.params.radius_m, r2 = r*r, thr = BUNDLE.params.threshold_min;
-  let sum = 0;
+  let gained = 0, served = 0, cells = 0;
   for (const i of candidates(x, y, Math.ceil(r/BUCKET_M)+1)){
-    if (CELLS.min[i] <= thr) continue;          // already within a 15-minute walk
-    if ((XY.x[i]-x)**2 + (XY.y[i]-y)**2 <= r2) sum += CELLS.ch[i];
+    if ((XY.x[i]-x)**2 + (XY.y[i]-y)**2 > r2) continue;
+    cells++;
+    if (CELLS.min[i] > thr) gained += CELLS.ch[i];
+    else served += CELLS.ch[i];
   }
-  return sum;
+  return { gained, served, cells };
 }
 
 /* ---------------- hover ---------------- */
@@ -568,11 +578,37 @@ function flush(){
 
   const x = ll.lng*kx, y = ll.lat*ky;
   const i = nearestCell(x, y);
-  const reached = childrenReached(x, y);
+  const st = reachStats(x, y);
+  const mins = BUNDLE.params.threshold_min;
 
   document.getElementById("hint").style.display = "none";
   document.getElementById("live").style.display = "";
-  document.getElementById("reach").textContent  = fmt(reached);
+
+  const big = document.getElementById("reach");
+  const unit = document.getElementById("reachunit");
+  const lbl = document.getElementById("reachlbl");
+  const live = document.getElementById("live");
+
+  if (!st.cells){
+    // Empty land, not a solved problem — saying "need met" here would be wrong.
+    live.dataset.state = "empty";
+    big.textContent = "Nobody";
+    unit.textContent = "";
+    lbl.textContent = `lives within a ${mins}-minute walk of this spot.`;
+  } else if (!st.gained){
+    live.dataset.state = "met";
+    big.textContent = "Already";
+    unit.textContent = "served";
+    lbl.textContent = st.served
+      ? `about ${fmt(st.served)} children live here and all of them are already within a ${mins}-minute walk of a school.`
+      : `everyone within a ${mins}-minute walk already has a school in reach.`;
+  } else {
+    live.dataset.state = "gain";
+    big.textContent = fmt(st.gained);
+    unit.textContent = "children";
+    lbl.textContent = `would be brought within a ${mins}-minute walk by a centre here.`;
+  }
+
   const noSupply = BUNDLE.params.no_supply_min || 999;
   document.getElementById("walkmin").textContent =
     i < 0 ? "—"
