@@ -149,6 +149,31 @@ def test_landing_states_the_data_caveats(land):
         assert phrase in land, f"data note is missing {phrase}"
 
 
+def test_readme_describes_what_the_project_actually_is():
+    """
+    The README drifted once already: it still called index.html the map after the app
+    moved to map.html, and listed neither of the two newest operations.
+    """
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+    for claim in ("map.html", "`explain`", "`poorest`", "scrollytelling"):
+        assert claim in readme, f"README does not mention {claim}"
+    assert "index.html          landing page + map" not in readme, "stale repo layout"
+
+
+def test_readme_diagram_colours_the_agents_by_kind():
+    """
+    Amber for the two language models, teal for the four deterministic agents. The point
+    of the picture is that neither model has the final word, so the split has to be
+    visible rather than only described in the caption.
+    """
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8")
+    assert "classDef llm" in readme and "classDef code" in readme
+    assert "class P,W llm" in readme, "the planner and writer are the LLM agents"
+    assert "class D,A,E,V code" in readme, "the other four are deterministic"
+    # The veto edge is the whole argument; a plain chain of six boxes is a weaker claim.
+    assert "V -.->" in readme, "the verifier's feedback edge is missing"
+
+
 def test_landing_figures_match_the_built_data():
     """
     The headline numbers are baked into the page. If the bundles are rebuilt and the

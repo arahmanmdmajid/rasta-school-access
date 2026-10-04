@@ -7,7 +7,8 @@ children live beyond a 15-minute walk of a school, and which sites to field-veri
 > *"How many girls are beyond a 30 minute walk in Dadu?"*
 > *"Compare these districts"*
 
-- **Live demo:** https://arahmanmdmajid-rasta-school-access.static.hf.space
+- **The story:** https://arahmanmdmajid-rasta-school-access.static.hf.space
+- **The app:** https://arahmanmdmajid-rasta-school-access.static.hf.space/map.html
 - **API docs:** https://rasta-api-2019.onrender.com/docs
 
 > The map, the hover catchment, the choropleth and the shortlist are static files and work
@@ -65,18 +66,36 @@ telling you about the map, not about the district.
 ## How it works
 
 ```mermaid
-flowchart LR
-  Q["Plain-English<br/>question"] --> P["<b>Planner</b><br/>LLM"]
-  P --> D["<b>Data Steward</b><br/>code"]
-  D --> A["<b>Analyst</b><br/>code"]
-  A --> E["<b>Equity Weigher</b><br/>code"]
-  E --> W["<b>Brief Writer</b><br/>LLM"]
-  W --> V["<b>Verifier</b><br/>code"]
-  V -->|numbers check out| OUT["Answer"]
-  V -->|mismatch: discard the prose| A
+flowchart TD
+  Q["Plain-English question"] --> P
   B[("District bundles<br/>static JSON")] --> D
-  B --> MAP["Map, hover catchment,<br/>shortlist — no server"]
+  B --> MAP["Map, hover catchment, shortlist<br/><i>no server involved</i>"]
+
+  subgraph pipe [" "]
+    direction TD
+    P["<b>Planner</b><br/>chooses the analysis"] --> D["<b>Data Steward</b><br/>provenance gate"]
+    D --> A["<b>Analyst</b><br/>computes every number"]
+    A --> E["<b>Equity Weigher</b><br/>UNESCO cohort weighting"]
+    E --> W["<b>Brief Writer</b><br/>turns facts into prose"]
+    W --> V["<b>Verifier</b><br/>checks every figure"]
+    V -.->|"mismatch — discard the prose,<br/>keep the computed text"| A
+  end
+
+  V ==>|all numbers supported| OUT["Answer + highlighted cells"]
+
+  classDef llm  fill:#fbeccd,stroke:#b07d1e,stroke-width:2px,color:#4a3205
+  classDef code fill:#d5eae6,stroke:#167d6e,stroke-width:2px,color:#0a3b34
+  classDef data fill:#ece3d4,stroke:#9c8d77,stroke-width:1px,color:#3a3129
+  classDef io   fill:#f6f1e8,stroke:#241c15,stroke-width:2px,color:#241c15
+  style pipe fill:#fcfaf7,stroke:#e0d5c4,stroke-width:1px
+  class P,W llm
+  class D,A,E,V code
+  class B data
+  class Q,OUT,MAP io
 ```
+
+**Amber is a language model; teal is ordinary Python.** Two of the six boxes are models,
+and neither has the final word — the dotted edge is the Verifier overruling the writer.
 
 **The AI chooses; the code computes.** No number a user sees is produced by a language
 model. The Planner picks an operation and fills parameters. The Analyst computes every
@@ -86,6 +105,23 @@ that claim and discards the brief if it does not hold**, falling back to the com
 
 Measured over ten live questions: **10/10 verified, 9/10 written by the model**; the tenth
 hit a Groq rate limit and fell back to computed text, which is the designed behaviour.
+
+### What you can ask
+
+| Operation | Question it answers |
+|---|---|
+| `gap` | "How many children are beyond a 30-minute walk?" |
+| `shortlist` | "Where should we open learning centres?" |
+| `poorest` | "Show me the least privileged areas" — ranks by relative wealth |
+| `compare` | "Compare these districts" |
+| `summary` | "Tell me about Dadu" |
+| `explain` | "What does this map show?" · "What do the colours mean?" · "How accurate is this?" |
+
+`explain` exists because the first things anyone asks are about the tool, not the data,
+and refusing them made the assistant look broken rather than careful. Its answers are
+assembled from config and the bundle rather than generated, so the Verifier still checks
+every number. Answers that concern particular places — `gap`, `shortlist`, `poorest` —
+also return the cells they are talking about, and the map outlines them.
 
 Skills demonstrated: Multi-Agent Systems, Agentic AI, Generative AI, AI Workflows, and
 AI-powered Business Process Automation — the process being automated is the district
@@ -117,7 +153,7 @@ api/
     planner.py        agent 1 — LLM routing, and the schema that constrains it
     bundles.py        agent 2 — bundle loading and the provenance gate
     analyst.py        agent 3 — every number, deterministically
-    writer.py         agent 4 — LLM prose
+    writer.py         agent 4 — LLM prose, in a briefing or explaining voice
     verifier.py       agent 5 — numeric check that can overrule agent 4
     pipeline.py       the orchestrator, and the trace it emits
 scripts/
@@ -127,10 +163,14 @@ scripts/
   build_bundles.py    precomputes one JSON per district
   deploy_web.ps1      pushes web/ to the Hugging Face Space
 web/
-  index.html          landing page + map + hover + ask panel (self-contained)
-  districts/*.json    29 precomputed Sindh districts
-tests/                74 tests, offline, under a second
+  index.html          the scrollytelling story (the site's entry point)
+  map.html            the app: map, hover catchment, shortlist, ask panel
+  districts/*.json    29 precomputed Sindh districts, plus their ODbL notice
+tests/                115 tests, offline, under a second
 ```
+
+Both pages are single self-contained files with no build step and no JavaScript
+libraries beyond Leaflet on the map. The story page is 26 KB.
 
 ## Run it locally
 
@@ -146,11 +186,11 @@ python scripts/fetch_giga.py
 python scripts/fetch_overture.py
 python scripts/build_bundles.py --province Sindh
 
-python -m http.server 8780 --directory web     # the page
+python -m http.server 8780 --directory web     # story at /, app at /map.html
 cd api && uvicorn app:app --port 7860          # the agent pipeline
 ```
 
-The page works with the API down; only the ask panel needs it.
+Both pages work with the API down; only the ask panel needs it.
 
 ### Tests
 
