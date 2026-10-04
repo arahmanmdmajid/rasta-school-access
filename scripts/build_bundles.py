@@ -30,7 +30,16 @@ from rasta import config  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "data" / "raw"
-OUT = ROOT / "web" / "districts"      # beside the page: one location, served statically
+WEB = ROOT / "web"                    # beside the page: served statically
+
+
+def out_dir(facility_type: str) -> Path:
+    """
+    Where a build writes. Education keeps the plain path so the deployed page's URLs
+    never move; any other type gets its own folder. Without this a health build would
+    quietly overwrite the school bundles the live site serves.
+    """
+    return WEB / ("districts" if facility_type == "education" else f"districts-{facility_type}")
 
 ADMIN2 = f"/vsizip/{RAW / 'pak_admin_boundaries.shp.zip'}/pak_admin2.shp"
 KONTUR = RAW / "kontur_population_PK_20231101.gpkg"
@@ -287,7 +296,8 @@ def build(code: str, facility_type: str) -> Path:
 
     supply = load_supply(boundary, utm, facility_type)
     demand = load_demand(boundary)
-    print(f"  mapped schools {len(supply):,} | population hexes {len(demand):,}")
+    print(f"  mapped {config.facility(facility_type)['plural']} {len(supply):,} "
+          f"| population hexes {len(demand):,}")
     if demand.empty:
         sys.exit("  no population hexes - nothing to build")
 
@@ -386,8 +396,9 @@ def build(code: str, facility_type: str) -> Path:
         "shortlist": shortlist(lon, lat, children, minutes),
     }
 
-    OUT.mkdir(parents=True, exist_ok=True)
-    path = OUT / f"{code}.json"
+    out = out_dir(facility_type)
+    out.mkdir(parents=True, exist_ok=True)
+    path = out / f"{code}.json"
     text = json.dumps(bundle, separators=(",", ":"))
     path.write_text(text, encoding="utf-8")
 
@@ -428,10 +439,10 @@ def main() -> None:
     for code in dict.fromkeys(codes):
         build(code, args.facility_type)
 
-    write_index()
+    write_index(args.facility_type)
 
 
-def write_index() -> None:
+def write_index(facility_type: str) -> None:
     """
     A small catalogue of the districts that have been built.
 
@@ -440,7 +451,8 @@ def write_index() -> None:
     offering a district and then failing to load it.
     """
     entries = []
-    for path in sorted(OUT.glob("PK*.json")):
+    out = out_dir(facility_type)
+    for path in sorted(out.glob("PK*.json")):
         bundle = json.loads(path.read_text(encoding="utf-8"))
         entries.append({
             "code": bundle["code"],
@@ -463,7 +475,7 @@ def write_index() -> None:
             "ADM2 districts; these are the ones bundled here."
         ),
     }
-    (OUT / "index.json").write_text(json.dumps(index, indent=1), encoding="utf-8")
+    (out / "index.json").write_text(json.dumps(index, indent=1), encoding="utf-8")
     print(f"\nindex.json: {len(entries)} districts")
 
 

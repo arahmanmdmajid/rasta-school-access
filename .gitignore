@@ -19,3 +19,6 @@ Thumbs.db
 
 # Build-time data downloads (large, re-fetchable, never committed)
 data/raw/
+
+# Demo bundles for other facility types are built on request, not shipped.
+web/districts-*/

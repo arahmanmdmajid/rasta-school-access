@@ -114,8 +114,12 @@ def main() -> None:
     print(f"  named            {named:,}")
     thar = [r for r in records if 69.0 <= r["longitude"] <= 71.1 and 24.2 <= r["latitude"] <= 25.6]
     sindh = [r for r in records if 66.5 <= r["longitude"] <= 71.2 and 23.5 <= r["latitude"] <= 28.6]
-    print(f"  rough Sindh      {len(sindh):,}   (OpenStreetMap 1,571 | Giga 1,557)")
-    print(f"  rough Tharparkar {len(thar):,}   (OpenStreetMap 2 | Giga 2)")
+    # The OSM/Giga baselines are school counts, so they only mean anything here for a
+    # schools run; printing them beside a health total would invite a false comparison.
+    base = "   (OpenStreetMap 1,571 | Giga 1,557)" if args.facility_type == "education" else ""
+    base2 = "   (OpenStreetMap 2 | Giga 2)" if args.facility_type == "education" else ""
+    print(f"  rough Sindh      {len(sindh):,}{base}")
+    print(f"  rough Tharparkar {len(thar):,}{base2}")
 
 
 if __name__ == "__main__":
