@@ -78,6 +78,14 @@ a{color:var(--accent)}
 .card p{color:var(--muted); margin:16px 0 0; font-size:16.5px}
 .card p strong{color:var(--ink); font-weight:600}
 
+/* Step six is where the product arrives, so the name gets a marker stroke rather than
+   passing by as another word in the sentence. */
+.brand{
+  color:var(--calm); position:relative; white-space:nowrap;
+  background:linear-gradient(transparent 62%, rgba(22,125,110,.18) 62%);
+  padding:0 .06em;
+}
+
 /* ----------------------------------------------------------- stage ---- */
 /* Sized off the viewport HEIGHT, not a fixed pixel cap. A 620px square sat marooned in
    a 1280px column on a large screen and the whole story looked like a thumbnail. */
@@ -107,19 +115,27 @@ a{color:var(--accent)}
   opacity:0; transition:opacity .5s ease; pointer-events:none; padding:0 6%;
 }
 #counter.on{opacity:1}
-/* The number has to be readable. Printed straight over the dots the label was simply
-   illegible, so the map drops back while a figure is on screen. */
-#stage.counting svg{opacity:.2}
+/* The number needs to sit ON something. Floating it over the dot field left the label
+   unreadable and the whole thing looking like a misplaced caption, so the map drops
+   right back and the figure gets a plate of its own. */
+#stage.counting svg{opacity:.13}
 #counter > div{
-  background:radial-gradient(60% 60% at 50% 50%,var(--sand) 58%,rgba(246,241,232,0) 100%);
-  padding:30px 26px; border-radius:50%;
+  background:rgba(246,241,232,.97);
+  border:1px solid var(--line); border-radius:20px;
+  padding:30px 34px; max-width:92%;
+  box-shadow:0 2px 6px rgba(36,28,21,.05),0 20px 50px rgba(36,28,21,.09);
 }
 #countnum{
   font-family:Fraunces,Georgia,serif; font-size:clamp(46px,8vw,96px); font-weight:600;
   line-height:1; font-variant-numeric:tabular-nums; color:var(--warm);
 }
-#countlabel{margin-top:14px; color:var(--muted); font-size:15.5px; max-width:30ch}
-#countdelta{margin-top:10px; font-size:14.5px; color:var(--calm); font-weight:600; opacity:0; transition:opacity .5s}
+#countlabel{
+  margin:16px auto 0; color:var(--ink); font-size:15.5px; max-width:26ch; line-height:1.45;
+}
+#countdelta{
+  margin-top:14px; font-size:14.5px; color:var(--calm); font-weight:600; opacity:0;
+  transition:opacity .5s; padding-top:13px; border-top:1px solid var(--line);
+}
 #countdelta.on{opacity:1}
 
 /* step 5: the spreadsheet */
@@ -173,7 +189,11 @@ footer{padding:34px 24px 54px; text-align:center; font-size:13px; color:var(--mu
   #stagewrap{
     position:fixed; inset:0; height:100svh; z-index:0; padding:18px; pointer-events:none;
   }
-  #stage{max-width:min(92vw,520px); opacity:.5}
+  /* Fade the MAP, not the stage. #counter, #sheet and #tooltip are children, so dimming
+     the whole stage washed the headline figure out to a pale pink on phones. */
+  #stage{max-width:min(92vw,520px)}
+  #stage svg{opacity:.45}
+  #stage.counting svg{opacity:.1}
   #steps{position:relative; z-index:1; padding:0 18px}
   .step{min-height:92svh}
   .card{background:rgba(255,255,255,.9); padding:24px 22px}
@@ -262,7 +282,7 @@ footer{padding:34px 24px 54px; text-align:center; font-size:13px; color:var(--mu
     <section class="step" data-step="6">
       <div class="card">
         <p class="num">Six</p>
-        <h2>Rasta puts the gap on the map.</h2>
+        <h2><span class="brand">Rasta</span> puts the gap on the map.</h2>
         <p>Move the cursor anywhere. It reads out how many underserved children a centre
            at that spot would reach.</p>
       </div>
@@ -514,8 +534,10 @@ async function build(){
 // proportions, so a tall district left a wide band of empty canvas and the drawing read
 // as a smudge in the corner. This centres the content and lets it fill the frame.
 function fitViewBox(){
-  const xs = CELLS.map(c => c.x).concat(SCHOOLS.map(s => s.x));
-  const ys = CELLS.map(c => c.y).concat(SCHOOLS.map(s => s.y));
+  // Fit to the dot field only. A school can sit outside the populated hexes, and letting
+  // one outlier set the frame pushed the whole district off to one side.
+  const xs = CELLS.map(c => c.x);
+  const ys = CELLS.map(c => c.y);
   if (!xs.length) return;
   const pad = 40;
   let x0 = Math.min(...xs) - pad, x1 = Math.max(...xs) + pad;
