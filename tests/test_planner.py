@@ -87,6 +87,64 @@ def test_off_topic_is_refused_by_the_keyword_router():
     assert planner.local_route("what's the weather tomorrow?")["operation"] == "unsupported"
 
 
+# ------------------------------------------------- questions about the tool itself
+
+@pytest.mark.parametrize("question,topic", [
+    ("what does the info on the map shows?", "overview"),
+    ("what am I looking at?", "overview"),
+    ("what is Rasta?", "overview"),
+    ("how do I use this?", "overview"),
+    ("what do the colours mean?", "colours"),
+    ("what are the red areas?", "colours"),
+    ("how do you calculate the walk time?", "method"),
+    ("what does 15 minutes mean?", "method"),
+    ("where does the data come from?", "data"),
+    ("how accurate is this?", "limits"),
+    ("what are the limitations?", "limits"),
+    ("can I trust these numbers?", "limits"),
+    ("is this real data?", "limits"),
+    ("which districts do you have?", "coverage"),
+    ("does it cover Punjab?", "coverage"),
+    ("why only Sindh?", "coverage"),
+    ("how does the AI work?", "ai"),
+    ("could this work for clinics?", "scope"),
+])
+def test_questions_about_the_tool_are_answered_not_refused(question, topic):
+    """
+    Twelve of these seventeen were refused before. They are the first things anyone new
+    asks - a judge most of all - and "I can only answer questions about school access"
+    makes the assistant look broken rather than careful.
+    """
+    out = planner.local_route(question, ["Malir Karachi", "Dadu"])
+    assert out["operation"] == "explain", f"refused: {question}"
+    assert out["params"]["topic"] == topic
+
+
+def test_an_explain_always_carries_a_topic():
+    """analyst.explain falls back to overview, but the planner should be explicit."""
+    out = planner.normalize({"operation": "explain", "params": {}}, "what is this?")
+    assert out["params"]["topic"] in planner.TOPICS
+
+
+def test_a_tool_question_beats_a_stray_keyword():
+    """
+    "how do you calculate the walk time" contains "walk", which used to route it to a
+    district summary - an answer to a question nobody asked.
+    """
+    assert planner.local_route("how do you calculate the walk time?")["params"]["topic"] == "method"
+
+
+def test_asking_about_a_district_still_wins_over_explain():
+    out = planner.local_route("tell me about Dadu", ["Dadu", "Malir Karachi"])
+    assert out["operation"] == "summary"
+    assert out["params"]["district"] == "Dadu"
+
+
+def test_still_refuses_what_it_should():
+    for junk in ("what's the weather tomorrow?", "tell me a joke", "who won the cricket?"):
+        assert planner.local_route(junk)["operation"] == "unsupported", junk
+
+
 @pytest.mark.parametrize("question,operation", [
     ("where are children more than 30 minutes from a school?", "gap"),
     ("which 5 sites should we open centres in?", "shortlist"),

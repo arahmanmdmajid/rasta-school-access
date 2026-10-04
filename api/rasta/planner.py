@@ -17,9 +17,14 @@ import re
 
 from . import ai
 
-OPERATIONS = ("gap", "shortlist", "summary", "compare", "unsupported")
+OPERATIONS = ("gap", "shortlist", "summary", "compare", "explain", "unsupported")
 INTERVENTIONS = ("ncl", "rehab", "annexe", "route", "any")
 COHORTS = ("children", "girls")
+
+# Questions about the tool itself, not about a district. "What am I looking at", "what do
+# the colours mean", "where is the data from", "how accurate is this" are the first things
+# anyone new asks, and refusing them made the assistant look broken rather than careful.
+TOPICS = ("overview", "colours", "method", "data", "limits", "coverage", "ai", "scope")
 
 MIN_MINUTES, MAX_MINUTES = 1, 180
 MAX_LIMIT = 20
@@ -33,6 +38,7 @@ operation is one of:
   shortlist  - which sites should be visited or invested in first
   summary    - an overview of a district
   compare    - set two or more districts against each other
+  explain    - a question about this tool: what it shows, how it works, its data or limits
   unsupported- anything not about school access, population or this analysis
 
 params may contain ONLY these keys:
@@ -42,11 +48,14 @@ params may contain ONLY these keys:
                annexe (girls' annexe at an existing school), route (transport or safe route), any
   cohort       children or girls
   limit        how many results, 1 to 20
+  topic        with explain only: overview, colours, method, data, limits, coverage, ai, scope
 
 Rules:
   Distances are always expressed in MINUTES of walking. "15" means 15 minutes.
   "where should we build", "which sites", "recommend", "prioritise" -> shortlist.
   "how far", "who is far", "underserved", "beyond" -> gap.
+  Anything asking what this is, what it shows, how it works, how good the data is,
+  what the colours mean or whether it covers something -> explain, with a topic.
   Mention district ONLY when the user names one.
   Use cohort "girls" only when the user asks about girls specifically.
 
@@ -57,8 +66,43 @@ Examples:
   "how many girls are beyond a 15 minute walk?" -> {"operation":"gap","params":{"minutes":15,"cohort":"girls"}}
   "tell me about Dadu" -> {"operation":"summary","params":{"district":"Dadu"}}
   "compare Malir and Tharparkar" -> {"operation":"compare","params":{}}
+  "what does the map show?" -> {"operation":"explain","params":{"topic":"overview"}}
+  "what do the colours mean?" -> {"operation":"explain","params":{"topic":"colours"}}
+  "how do you work out the walking time?" -> {"operation":"explain","params":{"topic":"method"}}
+  "where does the data come from?" -> {"operation":"explain","params":{"topic":"data"}}
+  "how accurate is this?" -> {"operation":"explain","params":{"topic":"limits"}}
+  "which districts do you cover?" -> {"operation":"explain","params":{"topic":"coverage"}}
+  "how does the AI work?" -> {"operation":"explain","params":{"topic":"ai"}}
+  "could this work for clinics?" -> {"operation":"explain","params":{"topic":"scope"}}
   "what's the weather tomorrow?" -> {"operation":"unsupported","params":{}}
 """
+
+# Meta questions, mapped to the topic that answers them.
+TOPIC_PATTERNS = (
+    ("colours", r"colou?r|legend|red|green|shad|key\b|what do the dots|dots mean"),
+    ("method",  r"how (do|does|did) (you|it|this)|calculat|work (it )?out|formula|"
+                r"15.?minute|769|detour|walking speed|straight.?line|measure"),
+    ("data",    r"data (from|source)|where.*(data|numbers?).*(from|come)|source|dataset|"
+                r"who (made|built|provides)|giga|overture|kontur|openstreetmap"),
+    ("limits",  r"accurate|accuracy|reliab|trust|limitation|caveat|wrong|confiden|"
+                r"how good|missing|incomplete|real data|verif"),
+    ("coverage", r"which district|what district|how many district|which (province|area|region)|"
+                r"why (only )?sindh|\bcover(s|ed|age)?\b|rest of pakistan|punjab|balochistan|"
+                r"khyber|available district|other district"),
+    ("ai",      r"\bai\b|\bllm\b|model|agent|how does the (assistant|chat)|hallucinat|verifier"),
+    ("scope",   r"health|clinic|hospital|other (sector|facilit)|could (this|it) (work|be used)|"
+                r"generali[sz]|besides school"),
+    # Deliberately narrow. "about this" alone also matches "tell me about this district",
+    # which is a request for a district summary, not an explanation of the tool.
+    ("overview", r"what (is|does) (this|rasta|it)\b|what am i looking|what are we looking|"
+                 r"what.*(the map|the info|this tool|this app)|explain (this|rasta|the tool)|"
+                 r"how (do i )?use (this|it|rasta)|what can (you|i) (do|ask)|purpose|"
+                 r"about (this (tool|app|map|site|thing)|rasta)"),
+)
+
+# Topics specific enough to answer even when a district is named. "overview" is the vague
+# catch-all, so a named district outranks it.
+SPECIFIC_TOPICS = ("colours", "method", "data", "limits", "coverage", "ai", "scope")
 
 # A question of this shape is a request for recommendations whatever the model says.
 # Keyword override of a model choice is a pattern that earns its place: the model
@@ -132,13 +176,36 @@ def normalize(intent: dict, question: str) -> dict:
     except (TypeError, ValueError):
         pass
 
+    topic = str(raw.get("topic") or "").lower().strip()
+    if topic in TOPICS:
+        out["topic"] = topic
+
     # Guard rail: a plainly prescriptive question is a shortlist, whatever was returned.
     if op in ("gap", "summary") and WANTS_SHORTLIST.search(question or ""):
         op = "shortlist"
+
+    # A question about the tool is an explain, even when the model called it something
+    # else - and an explain always needs a topic to answer.
+    meta = topic_of(question or "")
+    if meta and op in ("summary", "unsupported") and not WANTS_SHORTLIST.search(question or ""):
+        op, out["topic"] = "explain", out.get("topic", meta)
+    if op == "explain":
+        out.setdefault("topic", meta or "overview")
+
     if op != "unsupported" and OFF_TOPIC.search(question or ""):
         op = "unsupported"
 
     return {"operation": op, "params": out}
+
+
+def topic_of(question: str) -> str | None:
+    """Which explain topic a question is reaching for, if any. Order matters: the
+    specific patterns are tried before the catch-all overview."""
+    text = (question or "").lower()
+    for name, pattern in TOPIC_PATTERNS:
+        if re.search(pattern, text):
+            return name
+    return None
 
 
 def local_route(question: str, names: list[str] | None = None) -> dict:
@@ -172,13 +239,23 @@ def local_route(question: str, names: list[str] | None = None) -> dict:
     # word "compare" - nothing in the vocabulary below would otherwise match it.
     comparing = bool(re.search(r"compare|versus|\bvs\b|against|side by side", t))
 
-    if OFF_TOPIC.search(t) or not (comparing or params.get("district") or re.search(
+    # A question about the tool itself is on topic. This is checked before the vocabulary
+    # gate below, which was refusing "what does this map show" and "how accurate is this".
+    meta = topic_of(t)
+
+    if OFF_TOPIC.search(t) or not (comparing or meta or params.get("district") or re.search(
         r"school|child|children|girl|walk|access|far|distance|centre|center|site|district|"
-        r"underserved|gap|invest|priorit|recommend|population|poor", t)):
+        r"underserved|gap|invest|priorit|recommend|population|poor|map|data|legend", t)):
         return {"operation": "unsupported", "params": {}}
 
     if WANTS_SHORTLIST.search(t):
         return {"operation": "shortlist", "params": params}
+    # Asked before the gap/summary branches: "how do you calculate the walk time" contains
+    # "walk" and would otherwise be answered with a district summary. A named district
+    # outranks the vague overview topic, but not a specific one - "how accurate is Dadu's
+    # data" is still a question about the data.
+    if meta and (meta in SPECIFIC_TOPICS or not params.get("district")):
+        return {"operation": "explain", "params": {**params, "topic": meta}}
     if comparing:
         return {"operation": "compare", "params": params}
     if re.search(r"beyond|more than|further|farther|far from|underserved|gap|how many", t):

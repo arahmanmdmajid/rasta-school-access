@@ -201,6 +201,112 @@ def compare(bundles: list[dict], params: dict) -> dict:
     }
 
 
+def explain(bundle: dict, params: dict) -> dict:
+    """
+    Questions about the tool rather than about a district.
+
+    These are the first things anyone asks - what am I looking at, what do the colours
+    mean, how accurate is this - and refusing them made the assistant look broken. The
+    answers are assembled from config and from the bundle, not written by the model, so
+    the Verifier can still check every number in the prose that follows.
+    """
+    from . import bundles as _bundles          # local: keeps the import graph one-way
+
+    topic = params.get("topic", "overview")
+    c, t, p = bundle["confidence"], bundle["totals"], bundle["params"]
+    bands = ", ".join(f"{b} min" for b in p["bands_min"])
+    pct = round(100 * t["children_underserved_est"] / t["children_est"]) if t["children_est"] else 0
+
+    if topic == "colours":
+        text = (
+            f"Each cell on the map is a patch of population, coloured by how long it "
+            f"takes to walk to the nearest mapped school. The bands are {bands}, from "
+            f"green for under {p['threshold_min']} minutes to red beyond an hour. Dark "
+            f"dots are the {c['mapped']:,} schools that exist in open data for "
+            f"{bundle['name']}."
+        )
+    elif topic == "method":
+        text = (
+            f"Walking time is estimated, not routed. The straight-line distance to the "
+            f"nearest mapped school is multiplied by a detour factor of "
+            f"{config.DETOUR_FACTOR} and divided by a walking speed of "
+            f"{config.WALK_KMH} km/h, so {p['threshold_min']} minutes works out at about "
+            f"{round(p['radius_m'])} metres. The {p['threshold_min']}-minute threshold is "
+            f"UNESCO's: girls aged 10 to 12 who walk 45 to 60 minutes are 15 percent less "
+            f"likely to attend than those within {p['threshold_min']}. Because the model "
+            f"is closed form a catchment is a circle, which is what lets it follow the "
+            f"cursor with no server call."
+        )
+    elif topic == "data":
+        names = ", ".join(s["name"] for s in config.SOURCES.values())
+        text = (
+            f"Schools come from UNICEF Giga and Overture Maps, merged and de-duplicated "
+            f"at 75 metres. Population is Kontur's gridded dataset, relative wealth is "
+            f"Meta's index, and district boundaries are OCHA's. In full: {names}. "
+            f"Everything is open data and every source is credited on the page."
+        )
+    elif topic == "limits":
+        ratio = c.get("province_ratio")
+        share = f"about {round(ratio * 100)} percent" if ratio else "a small share"
+        text = (
+            f"The honest answer is that the map is incomplete. {c['mapped']:,} schools "
+            f"are mapped in {bundle['name']}, and across {bundle['province']} open data "
+            f"holds {share} of the schools the official count reports. Distances are "
+            f"straight-line estimates rather than routed along roads, and child counts "
+            f"apply a national age share of {config.CHILD_SHARE} to gridded population, "
+            f"so they are modelled estimates and not census figures. Nothing here says a "
+            f"school is open or functioning, only that it is on the map. Treat every "
+            f"result as a place to field-verify."
+        )
+    elif topic == "coverage":
+        codes = _bundles.index().get("districts", [])
+        text = (
+            f"{len(codes)} districts of {bundle['province']} are loaded here, covering "
+            f"every district in the province. The pipeline itself runs on any of "
+            f"Pakistan's 160 districts; these are the ones precomputed for this build, "
+            f"which is why the picker lists them and nothing else."
+        )
+    elif topic == "ai":
+        text = (
+            "Five agents answer each question, and two of them are language models. A "
+            "planner reads the question and chooses an analysis; the analysis itself is "
+            "ordinary Python, so every number is computed rather than generated. A writer "
+            "turns those numbers into prose, and a verifier then checks every figure in "
+            "that prose against what was computed and discards the wording if anything "
+            "does not match. The model chooses; the code computes."
+        )
+    elif topic == "scope":
+        text = (
+            "The same pipeline works for any facility people walk to. Schools are the "
+            "configured type here, and switching it to health facilities changes the "
+            "source query and nothing else - the population grid, the walking model, the "
+            "ranking and the verifier are all unchanged."
+        )
+    else:
+        text = (
+            f"This map shows how far children have to walk to school. You are looking at "
+            f"{bundle['name']} in {bundle['province']}: about {t['children_est']:,} "
+            f"school-age children across {t['hexes']:,} population cells, with "
+            f"{c['mapped']:,} schools visible in open data. Around "
+            f"{t['children_underserved_est']:,} of those children ({pct} percent) live "
+            f"more than {p['threshold_min']} minutes' walk from one. Move the cursor over "
+            f"the map and the circle is a {p['threshold_min']}-minute walk, reading out "
+            f"how many underserved children a new centre there would reach."
+        )
+
+    return {
+        "op": "explain",
+        "facts": {
+            "topic": topic, "district": bundle["name"], "province": bundle["province"],
+            "mapped_schools": c["mapped"], "threshold_min": p["threshold_min"],
+            "radius_m": round(p["radius_m"]), "children_est": t["children_est"],
+            "children_beyond": t["children_underserved_est"], "percent_beyond": pct,
+            "cells": t["hexes"],
+        },
+        "text": text,
+    }
+
+
 def run(operation: str, bundle, params: dict) -> dict:
     if operation == "compare" and isinstance(bundle, list):
         return compare(bundle, params)
@@ -210,6 +316,8 @@ def run(operation: str, bundle, params: dict) -> dict:
         return gap(bundle, params)
     if operation == "shortlist":
         return shortlist(bundle, params)
+    if operation == "explain":
+        return explain(bundle, params)
     # Anything unrecognised falls through to a summary rather than failing: a defensive
     # default inherited from the forked code, and still the right behaviour.
     return summary(bundle, params)

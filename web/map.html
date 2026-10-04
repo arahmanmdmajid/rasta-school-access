@@ -763,10 +763,13 @@ fab.onclick = openAsk;
 document.getElementById("askclose").onclick = closeAsk;
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !win.hidden) closeAsk(); });
 
+// One of these deliberately asks about the tool rather than the data, so it is obvious
+// that "what does this show?" is a question you can ask here.
 const EXAMPLES = [
+  "What does this map show?",
   "Where should we open learning centres?",
   "How many girls are beyond a 30 minute walk?",
-  "Compare these districts",
+  "How accurate is this?",
 ];
 const chipsEl = document.getElementById("chips");
 chipsEl.innerHTML = EXAMPLES.map(e => `<button type="button" class="chip">${e}</button>`).join("");

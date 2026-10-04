@@ -36,9 +36,11 @@ def answer(question: str, district_code: str | None = None) -> dict:
 
     if op == "unsupported":
         return {
-            "answer": ("I can answer questions about walking access to school in the "
-                       "districts loaded here - how far children are from a school, "
-                       "which sites to visit first, and how districts compare."),
+            "answer": ("I answer questions about walking access to school in the districts "
+                       "loaded here. Ask how far children are from a school, which sites to "
+                       "visit first, or how districts compare - or ask about the tool "
+                       "itself: what the map shows, what the colours mean, how the walking "
+                       "time is worked out, where the data comes from, or how reliable it is."),
             "tag": planner.describe(intent), "trace": trace,
             "timing_ms": int((time.time() - started) * 1000),
         }
@@ -85,7 +87,8 @@ def answer(question: str, district_code: str | None = None) -> dict:
     })
 
     # --- 5. Brief Writer (LLM) ---------------------------------------------------
-    brief, wrote = writer.write(question, result["text"], prov["caveat"])
+    brief, wrote = writer.write(question, result["text"], prov["caveat"],
+                                mode="explain" if op == "explain" else "brief")
     trace.append({"agent": "Brief Writer", "kind": "llm", "via": wrote,
                   "decided": f"{len(brief.split())} words"})
 
