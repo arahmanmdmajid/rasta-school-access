@@ -79,7 +79,9 @@ a{color:var(--accent)}
 .card p strong{color:var(--ink); font-weight:600}
 
 /* ----------------------------------------------------------- stage ---- */
-#stage{width:100%; max-width:620px; aspect-ratio:1/1; position:relative}
+/* Sized off the viewport HEIGHT, not a fixed pixel cap. A 620px square sat marooned in
+   a 1280px column on a large screen and the whole story looked like a thumbnail. */
+#stage{width:min(100%,86svh); aspect-ratio:1/1; position:relative}
 #stage svg{width:100%; height:100%; display:block; overflow:visible}
 .lay{opacity:0; transition:opacity .62s ease, transform .62s ease}
 .on{opacity:1}
@@ -102,9 +104,16 @@ a{color:var(--accent)}
 
 #counter{
   position:absolute; inset:0; display:grid; place-items:center; text-align:center;
-  opacity:0; transition:opacity .5s ease; pointer-events:none;
+  opacity:0; transition:opacity .5s ease; pointer-events:none; padding:0 6%;
 }
 #counter.on{opacity:1}
+/* The number has to be readable. Printed straight over the dots the label was simply
+   illegible, so the map drops back while a figure is on screen. */
+#stage.counting svg{opacity:.2}
+#counter > div{
+  background:radial-gradient(60% 60% at 50% 50%,var(--sand) 58%,rgba(246,241,232,0) 100%);
+  padding:30px 26px; border-radius:50%;
+}
 #countnum{
   font-family:Fraunces,Georgia,serif; font-size:clamp(46px,8vw,96px); font-weight:600;
   line-height:1; font-variant-numeric:tabular-nums; color:var(--warm);
@@ -390,6 +399,10 @@ const DISTRICT = "districts/PK714.json";     // Malir, Karachi
 const stage = $("#stage");
 let CELLS = null, SCHOOLS = null, NEWSITE = null, R_PX = 0;
 let DISTRICT_BEYOND = 444816, NEW_SITE_REACH = 9957, REACHED_N = 11, REACHED = new Set();
+// Step one's walking path lives in the original square; the district gets cropped to
+// its own content. The frame swaps between them when the story moves on.
+const FULL_VB = "0 0 1000 1000";
+let FIT_VB = FULL_VB;
 
 /* ---------------------------------------------------------- build ---- */
 // Projects the real district into the 1000x1000 viewBox. If the data cannot be
@@ -494,6 +507,23 @@ async function build(){
   }
   $("#newreach").style.opacity = 0;
   $("#newschool").style.opacity = 0;
+  fitViewBox();
+}
+
+// Crop the viewBox to what was actually drawn. The projection keeps the district's real
+// proportions, so a tall district left a wide band of empty canvas and the drawing read
+// as a smudge in the corner. This centres the content and lets it fill the frame.
+function fitViewBox(){
+  const xs = CELLS.map(c => c.x).concat(SCHOOLS.map(s => s.x));
+  const ys = CELLS.map(c => c.y).concat(SCHOOLS.map(s => s.y));
+  if (!xs.length) return;
+  const pad = 40;
+  let x0 = Math.min(...xs) - pad, x1 = Math.max(...xs) + pad;
+  let y0 = Math.min(...ys) - pad, y1 = Math.max(...ys) + pad;
+  // Keep it square so the hexagon-free dot field is not stretched.
+  const side = Math.max(x1 - x0, y1 - y0);
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  FIT_VB = `${(cx - side/2).toFixed(0)} ${(cy - side/2).toFixed(0)} ${side.toFixed(0)} ${side.toFixed(0)}`;
 }
 
 /* -------------------------------------------------------- colour ---- */
@@ -532,6 +562,9 @@ function runCounter(to){
 function show(n){
   stage.dataset.step = n;
   const district = $("#district"), reaches = $("#reaches");
+
+  stage.querySelector("svg").setAttribute("viewBox", n <= 1 ? FULL_VB : FIT_VB);
+  stage.classList.toggle("counting", n === 4 || n === 7);
 
   $("#pathfig").style.opacity = n <= 1 ? 1 : 0;
   district.classList.toggle("on", n >= 2);

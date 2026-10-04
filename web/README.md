@@ -7,7 +7,7 @@ sdk: static
 app_file: index.html
 pinned: false
 license: mit
-short_description: Where children in Pakistan live beyond a 15-minute walk of a school
+short_description: Children in Pakistan beyond a 15-minute walk of school
 ---
 
 # Rasta
