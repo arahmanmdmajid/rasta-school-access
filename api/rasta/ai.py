@@ -14,8 +14,6 @@ from __future__ import annotations
 import os
 
 MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
-# A second model to name in the README and fall back to by hand if the first is retired.
-FALLBACK_MODEL = os.environ.get("GROQ_FALLBACK_MODEL", "llama-3.3-70b-versatile")
 
 TIMEOUT_S = 30
 _client = None

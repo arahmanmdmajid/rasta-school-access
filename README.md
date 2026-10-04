@@ -192,6 +192,21 @@ cd api && uvicorn app:app --port 7860          # the agent pipeline
 
 Both pages work with the API down; only the ask panel needs it.
 
+### Another facility type
+
+Walking access to a school and walking access to a clinic are the same problem. The
+facility type is a key in `rasta/config.py`, and switching it changes which sources are
+queried — nothing else:
+
+```bash
+python scripts/fetch_overture.py --facility-type health
+python scripts/build_bundles.py --province Sindh --facility-type health
+```
+
+The population grid, the walking model, the shortlist ranking and the verifier are all
+untouched. UNICEF Giga is skipped for a health build, because it is a school database
+and mixing it in would quietly put schools in the result.
+
 ### Tests
 
 ```bash

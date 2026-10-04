@@ -27,23 +27,12 @@ from pathlib import Path
 import requests
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "api"))
+from rasta import config  # noqa: E402
 RAW = ROOT / "data" / "raw"
 API = "https://uni-ooi-giga-maps-service.azurewebsites.net/api/v1"
 PAGE_SIZE = 1000          # the API requires `size`; we probe what it will actually give
 TIMEOUT_S = 90
-
-
-def load_env() -> None:
-    """Read .env at the repo root, without adding a python-dotenv dependency."""
-    env = ROOT / ".env"
-    if not env.exists():
-        return
-    for line in env.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, value = line.split("=", 1)
-        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
 
 def api_key() -> str:
@@ -124,7 +113,7 @@ def main() -> None:
         rows = json.loads(out.read_text(encoding="utf-8"))
         print(f"cached: {len(rows):,} schools in {out}  (use --refresh to re-fetch)")
     else:
-        load_env()
+        config.load_env()
         print(f"fetching {args.country} from Giga...")
         rows = fetch_country(args.country, api_key())
         if not rows:

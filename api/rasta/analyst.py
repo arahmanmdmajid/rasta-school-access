@@ -14,18 +14,11 @@ Each operation returns a dict with:
 
 from __future__ import annotations
 
-import math
 
 from . import config
 
 
-def _radius_m(minutes: float) -> float:
-    return (minutes / 60.0) * (config.WALK_KMH * 1000.0) / config.DETOUR_FACTOR
 
-
-def _local_scale(lats: list[float]) -> tuple[float, float]:
-    lat0 = sum(lats) / len(lats) if lats else 25.0
-    return 111_320.0 * math.cos(math.radians(lat0)), 110_540.0
 
 
 def human_walk(minutes: float, no_supply: float = 999) -> str:

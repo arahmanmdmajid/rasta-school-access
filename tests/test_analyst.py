@@ -105,6 +105,22 @@ def test_reached_never_exceeds_the_underserved_total(bundle):
     assert total <= bundle["totals"]["children_underserved_est"] + 1
 
 
+def test_facility_type_actually_changes_the_sources():
+    """
+    This flag used to be a label and nothing more: --facility-type health produced a
+    bundle marked "health" that still held schools, because no loader branched on it.
+    Each type must name its own Overture categories, and Giga - a school database -
+    must not be a source for health.
+    """
+    assert set(config.FACILITY_TYPES) >= {"education", "health"}
+    edu, health = config.facility("education"), config.facility("health")
+    assert edu["overture"] != health["overture"], "both types query the same categories"
+    assert edu["giga"] is True and health["giga"] is False
+    # An unknown or stale label must fall back, never raise.
+    assert config.facility("nonsense") == edu
+    assert config.facility(None)["label"]
+
+
 def test_interventions_come_from_the_closed_menu(bundle):
     from rasta.planner import INTERVENTIONS
     for s in bundle["shortlist"]:

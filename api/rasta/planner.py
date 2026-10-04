@@ -25,7 +25,6 @@ WANTS_POOREST = re.compile(
     r"poor(est|er)?\b|least privileg|underprivileg|deprived|disadvantag|worst off|"
     r"least well.?off|low(est)? income|needi(est|er)|most vulnerable|wealth", re.I)
 INTERVENTIONS = ("ncl", "rehab", "annexe", "route", "any")
-COHORTS = ("children", "girls")
 
 # Questions about the tool itself, not about a district. "What am I looking at", "what do
 # the colours mean", "where is the data from", "how accurate is this" are the first things

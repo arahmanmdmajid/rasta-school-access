@@ -21,16 +21,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
-# Load .env before importing the package: rasta.ai freezes its model name at import.
-for _env in (os.path.join(os.path.dirname(__file__), ".env"),
-             os.path.join(os.path.dirname(__file__), "..", ".env")):
-    if os.path.exists(_env):
-        for _line in open(_env, encoding="utf-8"):
-            if "=" in _line and not _line.lstrip().startswith("#"):
-                _k, _v = _line.strip().split("=", 1)
-                os.environ.setdefault(_k.strip(), _v.strip().strip('"').strip("'"))
+# config imports nothing from the package, so loading .env through it is safe here -
+# and it must happen before rasta.ai is imported, because that freezes the model name.
+from rasta import config  # noqa: E402
 
-from rasta import ai, bundles, config, pipeline  # noqa: E402
+config.load_env()
+
+from rasta import ai, bundles, pipeline  # noqa: E402
 
 ALLOWED_ORIGINS = [
     o.strip() for o in os.environ.get(
@@ -50,7 +47,6 @@ app.add_middleware(CORSMiddleware, allow_origins=ALLOWED_ORIGINS,
 
 # ---------------------------------------------------------------- rate limiting
 _hits: dict[str, deque] = defaultdict(deque)
-_MAX_BUCKETS = 2048
 
 
 def rate_limit(request: Request, bucket: str, per_minute: int) -> None:
@@ -63,11 +59,6 @@ def rate_limit(request: Request, bucket: str, per_minute: int) -> None:
     if len(q) >= per_minute:
         raise HTTPException(429, "Too many requests - wait a minute and try again.")
     q.append(now)
-    # The forked code let this dict grow forever, one entry per IP seen. Evicting the
-    # stale ones keeps a long-running free instance from leaking memory.
-    if len(_hits) > _MAX_BUCKETS:
-        for k in [k for k, v in list(_hits.items()) if not v or now - v[-1] > 120]:
-            _hits.pop(k, None)
 
 
 # --------------------------------------------------------------------- schemas

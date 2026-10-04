@@ -29,6 +29,9 @@ from pathlib import Path
 import duckdb
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "api"))
+from rasta import config  # noqa: E402
+
 RAW = ROOT / "data" / "raw"
 CATALOG = "https://stac.overturemaps.org/catalog.json"
 S3 = "s3://overturemaps-us-west-2/release/{release}/theme=places/type=place/*"
@@ -36,14 +39,17 @@ S3 = "s3://overturemaps-us-west-2/release/{release}/theme=places/type=place/*"
 # Generous bounding box over Pakistan; the admin join later decides what is really inside.
 PAKISTAN = (60.5, 23.5, 77.5, 37.2)
 
-# Overture renamed `categories` to `taxonomy` in recent releases and added
-# `basic_category`. Both are matched so this keeps working across a release bump.
-SCHOOL_FILTER = """
-      taxonomy.primary ILIKE '%school%'
-   OR taxonomy.primary ILIKE '%education%'
-   OR taxonomy.primary ILIKE '%kindergarten%'
-   OR basic_category ILIKE '%school%'
-"""
+
+def category_filter(words: tuple[str, ...]) -> str:
+    """
+    Overture renamed `categories` to `taxonomy` in recent releases and added
+    `basic_category`. Both are matched so this keeps working across a release bump.
+    """
+    clauses = []
+    for w in words:
+        clauses.append(f"taxonomy.primary ILIKE '%{w}%'")
+        clauses.append(f"basic_category ILIKE '%{w}%'")
+    return " OR ".join(clauses)
 
 
 def latest_release() -> str:
@@ -61,19 +67,22 @@ def latest_release() -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--facility-type", default=config.FACILITY_TYPE,
+                        choices=sorted(config.FACILITY_TYPES))
     parser.add_argument("--refresh", action="store_true")
     args = parser.parse_args()
 
+    spec = config.facility(args.facility_type)
     RAW.mkdir(parents=True, exist_ok=True)
-    out = RAW / "overture_pak_schools.json"
+    out = RAW / f"overture_pak_{args.facility_type}.json"
     if out.exists() and not args.refresh:
         rows = json.loads(out.read_text(encoding="utf-8"))
-        print(f"cached: {len(rows):,} schools in {out}  (use --refresh to re-fetch)")
+        print(f"cached: {len(rows):,} {spec['plural']} in {out}  (use --refresh to re-fetch)")
         return
 
     release = latest_release()
     xmin, ymin, xmax, ymax = PAKISTAN
-    print(f"Overture release {release} — scanning places over Pakistan (a few minutes)…")
+    print(f"Overture release {release} — scanning {spec['plural']} over Pakistan (a few minutes)…")
 
     con = duckdb.connect()
     # spatial is needed for ST_X/ST_Y over Overture's GEOMETRY column; httpfs for S3.
@@ -89,7 +98,7 @@ def main() -> None:
         FROM read_parquet('{S3.format(release=release)}', hive_partitioning=1)
         WHERE bbox.xmin BETWEEN {xmin} AND {xmax}
           AND bbox.ymin BETWEEN {ymin} AND {ymax}
-          AND ({SCHOOL_FILTER})
+          AND ({category_filter(spec["overture"])})
     """).fetchall()
 
     records = [
@@ -100,7 +109,7 @@ def main() -> None:
     ]
     out.write_text(json.dumps(records), encoding="utf-8")
 
-    print(f"wrote {len(records):,} schools to {out}")
+    print(f"wrote {len(records):,} {spec['plural']} to {out}")
     named = sum(1 for r in records if r["name"])
     print(f"  named            {named:,}")
     thar = [r for r in records if 69.0 <= r["longitude"] <= 71.1 and 24.2 <= r["latitude"] <= 25.6]

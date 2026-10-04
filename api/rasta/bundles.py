@@ -9,14 +9,11 @@ with almost no mapped schools cannot quietly produce a confident-sounding answer
 from __future__ import annotations
 
 import json
-from collections import OrderedDict
 from functools import lru_cache
 from pathlib import Path
 
 DIR = Path(__file__).resolve().parents[2] / "web" / "districts"
 
-_CACHE: "OrderedDict[str, dict]" = OrderedDict()
-_CACHE_SIZE = 4          # bundles are up to ~500 KB; a handful is plenty
 
 
 @lru_cache(maxsize=1)
@@ -49,19 +46,11 @@ def resolve(text: str | None) -> str | None:
     return None
 
 
+@lru_cache(maxsize=4)
 def load(code: str) -> dict | None:
-    if code in _CACHE:
-        _CACHE.move_to_end(code)
-        return _CACHE[code]
+    """Bundles run to ~500 KB, so a handful in memory is plenty."""
     path = DIR / f"{code}.json"
-    if not path.exists():
-        return None
-    bundle = json.loads(path.read_text(encoding="utf-8"))
-    _CACHE[code] = bundle
-    _CACHE.move_to_end(code)
-    while len(_CACHE) > _CACHE_SIZE:
-        _CACHE.popitem(last=False)
-    return bundle
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
 
 
 def provenance(bundle: dict) -> dict:

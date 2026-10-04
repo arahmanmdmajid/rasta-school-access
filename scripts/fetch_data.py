@@ -5,7 +5,6 @@ Build time only. Nothing here is needed by the deployed service - the district b
 produced from these files are what ship.
 
     python scripts/fetch_data.py            # everything missing
-    python scripts/fetch_data.py --only admin_xlsx
 
 Sources and licences are listed in rasta/config.py SOURCES and in the README.
 """
@@ -77,16 +76,13 @@ def download(key: str, url: str, name: str) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--only", help="download just this key", choices=sorted(FILES))
-    args = parser.parse_args()
+    argparse.ArgumentParser(description=__doc__).parse_args()
 
     RAW.mkdir(parents=True, exist_ok=True)
-    keys = [args.only] if args.only else list(FILES)
-
     print(f"data/raw -> {RAW}")
     failed = []
-    for key in keys:
+    # Anything already downloaded is skipped, so re-fetching one file is deleting it.
+    for key in FILES:
         url, name = FILES[key]
         try:
             download(key, url, name)

@@ -9,6 +9,32 @@ question, so each one ships with the source it came from. CITATIONS is rendered 
 UI next to the parameter controls and reproduced in the README.
 """
 
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+
+def load_env(root: Path | None = None) -> None:
+    """
+    Read .env at the repo root into the environment, without a python-dotenv dependency.
+
+    Real environment variables win, so a deployed service is never overridden by a file
+    that happens to be lying around. Both the API and the build scripts need this, which
+    is why it lives here instead of being written out twice.
+    """
+    root = root or Path(__file__).resolve().parents[2]
+    env = root / ".env"
+    if not env.exists():
+        return
+    for line in env.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
 # --- The walk model -------------------------------------------------------------
 # Straight-line distance in metres, inflated by a detour factor, divided by a walking
 # speed. Closed form on purpose: it is what makes a live hover catchment possible,
@@ -34,8 +60,34 @@ GIRL_SHARE = 0.48           # share of those children who are girls
 GIRLS_PENALTY = 0.15
 
 # --- Scope ----------------------------------------------------------------------
-# The same pipeline runs for health facilities; only the source query changes.
-FACILITY_TYPE = "education"          # "education" | "health"
+# The same pipeline runs for anything people walk to. Only the source query differs;
+# the population grid, the walking model, the ranking and the verifier are untouched.
+#
+# `overture` is matched against Overture's taxonomy.primary and basic_category.
+# `giga` says whether UNICEF Giga is a source at all - it is a school database, so it
+# contributes nothing to a health build.
+FACILITY_TYPE = "education"          # a key of FACILITY_TYPES
+
+FACILITY_TYPES = {
+    "education": {
+        "label": "school",
+        "plural": "schools",
+        "giga": True,
+        "overture": ("school", "education", "kindergarten"),
+    },
+    "health": {
+        "label": "health facility",
+        "plural": "health facilities",
+        "giga": False,
+        "overture": ("hospital", "clinic", "doctor", "health", "medical", "pharmacy"),
+    },
+}
+
+
+def facility(kind: str | None = None) -> dict:
+    """The configured facility type, or a named one. Unknown names fall back rather
+    than raising, so a stale bundle label can never break a read."""
+    return FACILITY_TYPES.get(kind or FACILITY_TYPE, FACILITY_TYPES["education"])
 
 # --- Provenance -----------------------------------------------------------------
 
