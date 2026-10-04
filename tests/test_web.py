@@ -73,6 +73,22 @@ def test_map_links_back_to_the_story(mp):
     assert 'href="index.html"' in mp
 
 
+def test_the_field_brief_is_a_real_artefact(mp):
+    """
+    The deck claims Rasta automates the district prioritisation memo. For a while that
+    memo was a paragraph in a chat panel - nothing an officer could file or take out.
+    It is now a downloadable document, and these are the parts that make it one.
+    """
+    assert 'id="brief"' in mp and "downloadBrief" in mp
+    assert "Read this first" in mp, "the brief must lead with the data caveat"
+    assert "Verified on site?" in mp, "no column to tick in the field"
+    assert "openstreetmap.org/?mlat=" in mp, "coordinates are not locatable"
+    # A standalone file opens in someone else's browser and theme.
+    assert "background:#ffffff" in mp.replace(" ", ""), "no explicit background"
+    for part in ("Method", "UNESCO", "ODbL", "Modelled estimates"):
+        assert part in mp, f"brief omits {part}"
+
+
 def test_legend_sits_on_the_map_and_can_be_dismissed(mp):
     """
     Bottom-left: zoom controls own the top-left and the ask button owns the bottom-right.

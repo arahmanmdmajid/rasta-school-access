@@ -127,6 +127,12 @@ select:focus{outline:2px solid var(--accent); outline-offset:1px}
 }
 :root[data-theme="dark"] .rank{color:#06201c}
 .site .m{font-size:12px; color:var(--muted)}
+#brief{
+  width:100%; margin-top:4px; padding:11px 14px; border-radius:10px;
+  border:1px solid var(--accent); background:transparent; color:var(--accent);
+  font-size:13.5px; font-weight:600;
+}
+#brief:hover{background:var(--accent-soft)}
 .site .c{font-weight:600; font-variant-numeric:tabular-nums; font-size:14px}
 
 /* ---------- legend: collapsible, on the map ---------- */
@@ -370,6 +376,7 @@ select:focus{outline:2px solid var(--accent); outline-offset:1px}
       <div class="section">
         <div class="label">Sites to field-verify</div>
         <div id="sites"></div>
+        <button id="brief" type="button">Download the field brief</button>
       </div>
 
 
@@ -722,6 +729,121 @@ function renderAnswer(draw){
     catch(e){ /* a failed animation must never hide the answer */ }
   }
 }
+
+// The district prioritisation memo an officer would otherwise assemble by hand. Built
+// from the bundle in the browser, so it needs no backend and works offline — and it
+// leads with the completeness caveat rather than burying it, because a shortlist read
+// without that context is a list of confirmed gaps, which it is not.
+const INTERVENTION = {
+  ncl: "Non-formal learning centre",
+  rehab: "Rehabilitate a damaged school",
+  annexe: "Girls' annexe at an existing school",
+  route: "Transport or safe route",
+  any: "To be decided on site",
+};
+
+// Matches the wording the API uses. In a district with almost no mapped facilities the
+// straight-line maths honestly produces things like 222 minutes, which is arithmetically
+// right and useless to someone planning a visit.
+function humanWalk(min, noSupply){
+  if (min >= noSupply) return "none mapped";
+  if (min >= 240) return "over 4 hours";
+  if (min >= 120) return `about ${Math.round(min / 60)} hours`;
+  return `${Math.round(min)} min`;
+}
+
+function buildBrief(){
+  const b = BUNDLE, p = b.params, c = b.confidence, t = b.totals;
+  const today = new Date().toISOString().slice(0, 10);
+  const pct = t.children_est ? Math.round(100 * t.children_underserved_est / t.children_est) : 0;
+  const provPct = c.province_ratio != null ? Math.round(c.province_ratio * 100) : null;
+  const esc = s => String(s).replace(/[&<>]/g, m => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;" }[m]));
+
+  const rows = b.shortlist.map((s, i) => `<tr>
+      <td>${i + 1}</td>
+      <td><a href="https://www.openstreetmap.org/?mlat=${s.lat}&amp;mlon=${s.lon}#map=15/${s.lat}/${s.lon}">${s.lat.toFixed(5)}, ${s.lon.toFixed(5)}</a></td>
+      <td class="n">${s.children_reached.toLocaleString()}</td>
+      <td class="n">${humanWalk(s.walk_min_to_nearest, p.no_supply_min || 999)}</td>
+      <td>${esc(INTERVENTION[s.intervention] || INTERVENTION.any)}</td>
+      <td class="chk"></td>
+    </tr>`).join("");
+
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<title>Field brief — ${esc(b.name)}, ${esc(b.province)}</title>
+<style>
+  @page{margin:18mm}
+  /* A standalone file opens in whatever browser and theme the reader has, so it sets
+     its own background. Colour alone rendered dark-on-dark in a dark-mode browser. */
+  html{background:#ffffff}
+  body{font:12pt/1.55 Georgia,serif;color:#1d1d1d;background:#ffffff;max-width:190mm;margin:0 auto;padding:16px}
+  table{background:#ffffff}
+  h1{font-size:21pt;margin:0 0 2px}
+  h2{font-size:13pt;margin:26px 0 8px;border-bottom:1px solid #ccc;padding-bottom:4px}
+  .sub{color:#555;margin:0 0 20px;font-size:10.5pt}
+  .caveat{border:1px solid #b07d1e;background:#fdf6e7;padding:12px 14px;border-radius:5px;font-size:10.5pt}
+  table{border-collapse:collapse;width:100%;font-size:10.5pt;margin-top:6px}
+  th,td{border:1px solid #ccc;padding:6px 8px;text-align:left;vertical-align:top}
+  th{background:#f0ece4}
+  td.n{text-align:right;white-space:nowrap}
+  td.chk{width:24mm}
+  dl{margin:0} dt{font-weight:bold;margin-top:9px;font-size:10.5pt} dd{margin:2px 0 0;font-size:10.5pt;color:#444}
+  footer{margin-top:26px;font-size:9.5pt;color:#666;border-top:1px solid #ccc;padding-top:10px}
+  a{color:#1d4f7c}
+  @media print{a{color:#1d1d1d;text-decoration:none}}
+</style></head><body>
+<h1>Field brief — ${esc(b.name)}, ${esc(b.province)}</h1>
+<p class="sub">Walking access to ${esc(b.facility_type === "health" ? "health facilities" : "school")} &middot; generated ${today} by Rasta</p>
+
+<div class="caveat"><b>Read this first.</b> ${esc(c.note || "")}</div>
+
+<h2>The district</h2>
+<table>
+  <tr><th style="width:62%">Measure</th><th>Value</th></tr>
+  <tr><td>Population</td><td class="n">${t.population.toLocaleString()}</td></tr>
+  <tr><td>School-age children (modelled estimate)</td><td class="n">${t.children_est.toLocaleString()}</td></tr>
+  <tr><td>Beyond a ${p.threshold_min}-minute walk of a mapped school</td><td class="n">${t.children_underserved_est.toLocaleString()} (${pct}%)</td></tr>
+  <tr><td>Facilities mapped in open data</td><td class="n">${c.mapped.toLocaleString()}</td></tr>
+  ${provPct != null ? `<tr><td>Share of ${esc(b.province)}'s schools visible in open data</td><td class="n">about ${provPct}%</td></tr>` : ""}
+  <tr><td>Population cells analysed</td><td class="n">${t.hexes.toLocaleString()}</td></tr>
+</table>
+
+<h2>Sites to field-verify, most children first</h2>
+<table>
+  <tr><th>#</th><th>Coordinates</th><th>Children brought<br>within reach</th><th>Current walk<br>to nearest</th><th>Suggested intervention</th><th>Verified on site?</th></tr>
+  ${rows}
+</table>
+<p class="sub" style="margin-top:8px">Coordinates link to OpenStreetMap. &ldquo;Children brought within reach&rdquo; counts only children currently beyond the threshold, and never counts the same child at two sites.</p>
+
+<h2>Method</h2>
+<dl>
+  <dt>Walking time</dt>
+  <dd>Straight-line distance &times; ${p.detour} detour factor &divide; ${p.kmh} km/h, so ${p.threshold_min} minutes is about ${Math.round(p.radius_m)} m. Not routed along roads.</dd>
+  <dt>The ${p.threshold_min}-minute threshold</dt>
+  <dd>UNESCO Global Education Monitoring Report 2026: girls aged 10&ndash;12 walking 45&ndash;60 minutes are 15% less likely to attend than those within ${p.threshold_min} minutes.</dd>
+  <dt>Child counts</dt>
+  <dd>A national age share of ${p.child_share} applied to gridded population. Modelled estimates, not census figures.</dd>
+  <dt>What this does not establish</dt>
+  <dd>That a mapped facility is open, staffed or usable; that an unmapped area has none; or that any household is poor. Relative wealth ranks places against the rest of the country.</dd>
+</dl>
+
+<footer>
+  Sources: UNICEF Giga and Overture Maps (facilities) &middot; Kontur (population) &middot; Meta Relative Wealth Index &middot; OCHA (boundaries).
+  Derived data under ODbL; the wealth index is CC-BY-NC, so this brief is not offered for commercial use.
+  Generated by Rasta &mdash; github.com/arahmanmdmajid/rasta-school-access
+</footer>
+</body></html>`;
+}
+
+function downloadBrief(){
+  const blob = new Blob([buildBrief()], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `rasta-field-brief-${BUNDLE.code}-${BUNDLE.name.replace(/\W+/g, "-").toLowerCase()}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+document.getElementById("brief").onclick = downloadBrief;
 
 function paintStats(){
   const t = BUNDLE.totals, c = BUNDLE.confidence, p = BUNDLE.params;
